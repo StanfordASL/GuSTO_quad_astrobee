@@ -1,5 +1,5 @@
-name = "gusto"
-uuid = "caafc668-27c9-55d7-99cf-b12d0160312e"
+name = "GuSTO_quad_astrobee"
+uuid = "e077716c-47d6-5a9b-9659-572b0da1be7d"
 
 [deps]
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
