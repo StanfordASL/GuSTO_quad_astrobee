@@ -1,3 +1,9 @@
+# -----------------------------------------------------------------------------------------------
+# -   Initializing script for the quadrotor example - Thomas Lew and Riccardo Bonalli 12/2019   -
+# -----------------------------------------------------------------------------------------------
+
+
+
 using LinearAlgebra
 using Ipopt
 using JuMP
@@ -9,47 +15,14 @@ include("./SCP/gusto_problem.jl")
 
 
 
-# Integration Scheme for ODE
-
-function solveRK4(scp_problem::GuSTOProblem,model,dynamics::Function,dim,N,tf,z0,t0=0.0)
-    h = (tf - t0)/(N - 1)
-    t = zeros(N)
-    z = zeros(dim,N)
-    dynTemp = zeros(dim)
-    zTemp = zeros(dim)
-    t[1] = t0
-    z[:,1] = z0
-
-    for i = 1:N-1
-        t[i+1] = t[i] + h
-
-        dynamics(scp_problem,model,dynTemp,z[:,i],t[i])
-        z[:,i+1] = z[:,i] + h*dynTemp/6.0
-
-        zTemp = z[:,i] + h*dynTemp/2.0
-        dynamics(scp_problem,model,dynTemp,zTemp,t[i]+h/2.0)
-        z[:,i+1] = z[:,i+1] + h*dynTemp/3.0
-
-        zTemp = z[:,i] + h*dynTemp/2.0
-        dynamics(scp_problem,model,dynTemp,zTemp,t[i]+h/2.0)
-        z[:,i+1] = z[:,i+1] + h*dynTemp/3.0
-
-        zTemp = z[:,i] + h*dynTemp
-        dynamics(scp_problem,model,dynTemp,zTemp,t[i]+h)
-        z[:,i+1] = z[:,i+1] + h*dynTemp/6.0
-    end
-
-    return t, z
-end
-
-
-
 # Plotting Functions
+
+
+
+# 2D plots
 
 function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all; x_shooting_all=[])
     N = length(X_all)
-
-    #pyplot(grid=true)
 
     idx = [1,2]
     local fig
@@ -57,6 +30,7 @@ function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all; x_shooti
         label="iter = 1",linewidth=2,
         xlims=(-0.5,3.),ylims=(-0.5,6.5),
         xlabel="x Position",ylabel="y Position")
+    
     for iter = 2:length(X_all)
         X = X_all[iter]
         plot!(fig, X[idx[1],:], X[idx[2],:],
@@ -71,6 +45,10 @@ function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all; x_shooti
     return fig
 end
 
+
+
+# 3D plots
+
 function plot3D_solutions(scp_problem::GuSTOProblem, model, X_all, U_all)
     N = length(X_all)
 
@@ -82,6 +60,7 @@ function plot3D_solutions(scp_problem::GuSTOProblem, model, X_all, U_all)
         linewidth=2,label="iter = 1",
         xlims=(-0.1,0.5),ylims=(-0.3,0.3),zlims=(-0.2,0.2),
         xlabel="x Position",ylabel="y Position",zlabel="z Position")
+
     for iter = 2:length(X_all)
         X = X_all[iter]
         plot!(fig,X[idx[1],:],X[idx[2],:],X[idx[3],:],
@@ -96,8 +75,12 @@ function plot3D_solutions(scp_problem::GuSTOProblem, model, X_all, U_all)
     return fig
 end
 
+
+
+# Additional plotting functions
+# Adapted from https://discourse.julialang.org/t/plot-a-circle-with-a-given-radius-with-plots-jl/23295
+
 function plot_circle(position_2d, radius; color=:blue, fig=-1, lab="")
-    # adapted from https://discourse.julialang.org/t/plot-a-circle-with-a-given-radius-with-plots-jl/23295
     function circleShape(h, k, r)
         theta = LinRange(0, 2*pi, 500)
         h .+ r*sin.(theta), k .+ r*cos.(theta)
@@ -117,6 +100,8 @@ function plot_circle(position_2d, radius; color=:blue, fig=-1, lab="")
         return fig
     end
 end
+
+
 
 function plot_sphere(position_3d, radius; color=:blue, fig=-1, lab="")
     if fig == -1 # undefined, plot new
