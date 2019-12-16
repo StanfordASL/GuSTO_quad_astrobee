@@ -25,7 +25,7 @@ mutable struct AstrobeeSE3
     # problem  
     x_init
     x_final
-    tf_guess
+    tf
 
     # sphere obstacles [(x,y),r]
     obstacles
@@ -74,7 +74,7 @@ function AstrobeeSE3()
     x_final = [0.7;-0.5;0;  0;0;0;  1.;0.;0.; 0.;  0;0;0]
 
 
-    tf_guess = 110.  # s
+    tf = 110.  # s
 
     # GuSTO Parameters
     Delta0 = 1000.
@@ -106,7 +106,7 @@ function AstrobeeSE3()
              [], [], [],
              model_radius, mass, J, Jinv,
              x_max, x_min, u_max, u_min,
-             x_init, x_final, tf_guess,
+             x_init, x_final, tf,
              obstacles, poly_obstacles,
                 Delta0,
                 omega0,

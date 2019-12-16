@@ -1,31 +1,50 @@
-# ----------------------------------------
-# -               CLASS                  -
-# ----------------------------------------
+# --------------------------------------------------------------------------
+# -   GuSTO solver environment - Thomas Lew and Riccardo Bonalli 12/2019   -
+# --------------------------------------------------------------------------
+
+
 
 export GuSTOProblem
 
+
+
+# GuSTO solver as a Julia class
+
 mutable struct GuSTOProblem
+    # Number of time-discretization steps and step-size, respectively
     N
     dt
 
+    # Penalization weight ω and trsut-region constraints radius Δ, respectively
     omega
     Delta
+
+    # Number of linear control constraints and second-order cone control constraints, respectively
     dimLinearConstraintsU
     dimSecondOrderConeConstraintsU
 
+    # Model class
     solver_model
 
+    # Current trajectory X and control U
     X
     U
+
+    # Trajectory X and control U at the previous iteration
     Xp
     Up
 
+    # The intial constraints are defined in the model class (used for set up)
     initial_constraint
 end
 
+
+
+# Standard constructor
+
 function GuSTOProblem(model, N, dimLinearConstraintsU, dimSecondOrderConeConstraintsU, Xp, Up, solver=Ipopt.Optimizer)
     N     = N
-    dt    = model.tf_guess / (N-1)
+    dt    = model.tf / (N-1)
     omega = model.omega0
     Delta = model.Delta0
 
@@ -40,6 +59,10 @@ function GuSTOProblem(model, N, dimLinearConstraintsU, dimSecondOrderConeConstra
                  [])
 end
 
+
+
+# Methods that define the convex subproblem at each new SCP iteration
+
 function reset_problem(scp_problem::GuSTOProblem, model, solver=Ipopt.Optimizer)
     scp_problem.solver_model = Model(with_optimizer(solver, print_level=0))
     N = scp_problem.N
@@ -49,6 +72,8 @@ function reset_problem(scp_problem::GuSTOProblem, model, solver=Ipopt.Optimizer)
     scp_problem.U       = U
 end
 
+
+
 function set_parameters(scp_problem::GuSTOProblem, model,
                         Xp, Up, omega, Delta)
     scp_problem.Xp = Xp
@@ -57,13 +82,17 @@ function set_parameters(scp_problem::GuSTOProblem, model,
     scp_problem.Delta = Delta
 end
 
+
+
+# Method that compute the accuracy ration ρ (in percentage)
+
 function accuracy_ratio(problem::GuSTOProblem, model, X, U, Xp, Up)
     N = length(X[1,:])
 
     num = 0.0
     den = 0.0
 
-    # Dynamics
+    # Contribution of the dynamics
     for k in 1:N-1
         x_k  = X[:, k]
         u_k  = U[:, k]
@@ -82,7 +111,7 @@ function accuracy_ratio(problem::GuSTOProblem, model, X, U, Xp, Up)
         den += norm(linearized,       2)
     end
 
-    # Obstacles
+    # Contribution of the obstacles
     for k = 1:N
         for i = 1:length(model.obstacles)
             constraint            = obstacle_constraint(            model, X, U, Xp, Up, k, i)
@@ -93,17 +122,17 @@ function accuracy_ratio(problem::GuSTOProblem, model, X, U, Xp, Up)
         end
     end
 
-    # Percentage ratio
-    accuracy_ratio = num*100.0/den
-
-    return accuracy_ratio
+    # Returning percentage ratio
+    return num*100.0/den
 end
 
 
 
-# ----------------------------------------
-# -               COSTS                  -
-# ----------------------------------------
+# The following methods define the convex subproblem at each iteration in the "JuMP" framework
+
+
+
+# Methods that define the cost
 
 function define_cost(scp_problem::GuSTOProblem, model)
     total_cost =  add_true_cost(scp_problem, model)
@@ -117,6 +146,15 @@ function add_true_cost(scp_problem::GuSTOProblem, model)
     return true_cost(model, X, U, Xp, Up)
 end
 
+
+
+# This method adds to the cost the linearized state constraints as penalizations
+# To simplify the formalism, penalizations are derived by introducing slack control variables λ, so that every scalar linear constraint g(t,x) <= 0 is rather penalized as
+#
+# ... + ∫ ω*( g(t,x) - λ )^2 dt
+#
+# with the additional linear control constraint " λ <= 0 "
+
 function add_penalties(scp_problem::GuSTOProblem, model)
     solver_model = scp_problem.solver_model
     x_dim, u_dim = model.x_dim, model.u_dim
@@ -126,47 +164,9 @@ function add_penalties(scp_problem::GuSTOProblem, model)
     N, dt        = length(X[1,:]), scp_problem.dt
 
     penalization = 0.
+    
+    # Contribution of trust-region constraints
 
-    # -----------------
-    # STATE CONSTRAINTS
-    # -----------------
-    # Dual variables to reformulate max(a,0) constraints
-    @variable(solver_model, lambdas_state_max_convex_constraints[i=1:x_dim, k=1:N])
-    @variable(solver_model, lambdas_state_min_convex_constraints[i=1:x_dim, k=1:N])
-    # Penalized constraints
-    for k = 1:N
-        for i = 1:x_dim
-            lambda_max     = lambdas_state_max_convex_constraints[i,k]
-            constraint_max = state_max_convex_constraints(model, X, U, Xp, Up, k, i)
-            lambda_min     = lambdas_state_min_convex_constraints[i,k]
-            constraint_min = state_min_convex_constraints(model, X, U, Xp, Up, k, i)
-
-            @constraint(solver_model, lambda_max <= 0.)
-            penalization += omega*(constraint_max-lambda_max)^2
-            @constraint(solver_model, lambda_min <= 0.)
-            penalization += omega*(constraint_min-lambda_min)^2
-        end
-    end
-    # -----------------
-
-    # -------------------------------------
-    # SECOND ORDER CONE CONTROL CONSTRAINTS
-    # -------------------------------------
-    # @variable(solver_model, lambdas_second_order_cone_control_constraints[i=1:dimSecondOrderConeConstraintsU, k=1:N])
-    # for k = 1:N-1
-    #     for i = 1:dimSecondOrderConeConstraintsU
-    #         lambda     = lambdas_second_order_cone_control_constraints[i,k]
-    #         constraint = control_second_order_cone_constraints(model, X, U, Xp, Up, k, i)
-
-    #         @constraint(solver_model, lambda <= 0.)
-    #         penalization += omega*(constraint-lambda)^2
-    #     end
-    # end
-    # ------------------------------------
-
-    # -------------
-    # TRUST REGIONS
-    # -------------
     @variable(solver_model, lambdas_trust_max_convex_constraints[i=1:x_dim, k=1:N])
     @variable(solver_model, lambdas_trust_min_convex_constraints[i=1:x_dim, k=1:N])
     for k = 1:N
@@ -182,66 +182,74 @@ function add_penalties(scp_problem::GuSTOProblem, model)
             penalization += omega*(constraint_min-lambda_min)^2
         end
     end
-    # ------------
+    
+    # Contribution of obstacle-avoidance constraints
 
-    # ---------
-    # OBSTACLES
-    # ---------
+    # Non-polygonal obstacles
 
-    # Spheres
     Nb_obstacles = length(model.obstacles)
-    @variable(solver_model, lambdas_obstacles[i=1:Nb_obstacles, k=1:N])
-    for k = 1:N
-        for i = 1:Nb_obstacles
-            lambda     = lambdas_obstacles[i,k]
-            constraint = obstacle_constraint_convexified(model, X, U, Xp, Up, k, i)
+    if Nb_obstacles > 0
+        @variable(solver_model, lambdas_obstacles[i=1:Nb_obstacles, k=1:N])
+        for k = 1:N
+            for i = 1:Nb_obstacles
+                lambda     = lambdas_obstacles[i,k]
+                constraint = obstacle_constraint_convexified(model, X, U, Xp, Up, k, i)
 
-            @constraint(solver_model, lambda <= 0.)
-            # ε = model.epsilon # Soft obstacles
-            # @constraint(solver_model, lambda <= ε)
-            penalization += omega*(constraint-lambda)^2
+                @constraint(solver_model, lambda <= 0.)
+                penalization += omega*(constraint-lambda)^2
+            end
         end
     end
 
     # Polygonal obstacles
-    Nb_poly_obstacles = length(model.poly_obstacles)
-    @variable(solver_model, lambdas_poly_obstacles[i=1:Nb_poly_obstacles, k=1:N])
-    for k = 1:N
-        for i = 1:Nb_poly_obstacles
-            lambda     = lambdas_poly_obstacles[i,k]
-            constraint = poly_obstacle_constraint_convexified(model, X, U, Xp, Up, k, i)
 
-            @constraint(solver_model, lambda <= 0.)
-            penalization += omega*(constraint-lambda)^2
+    Nb_poly_obstacles = length(model.poly_obstacles)
+    if Nb_poly_obstacles > 0
+        @variable(solver_model, lambdas_poly_obstacles[i=1:Nb_poly_obstacles, k=1:N])
+        for k = 1:N
+            for i = 1:Nb_poly_obstacles
+                lambda     = lambdas_poly_obstacles[i,k]
+                constraint = poly_obstacle_constraint_convexified(model, X, U, Xp, Up, k, i)
+
+                @constraint(solver_model, lambda <= 0.)
+                penalization += omega*(constraint-lambda)^2
+            end
         end
     end
-    # --------
+
+    # Contribution of state constraints that are different from trust-region constraints and obstacle-avoidance constraints
+
+    @variable(solver_model, lambdas_state_max_convex_constraints[i=1:x_dim, k=1:N])
+    @variable(solver_model, lambdas_state_min_convex_constraints[i=1:x_dim, k=1:N])
+    for k = 1:N
+        for i = 1:x_dim
+            lambda_max     = lambdas_state_max_convex_constraints[i,k]
+            constraint_max = state_max_convex_constraints(model, X, U, Xp, Up, k, i)
+            lambda_min     = lambdas_state_min_convex_constraints[i,k]
+            constraint_min = state_min_convex_constraints(model, X, U, Xp, Up, k, i)
+
+            @constraint(solver_model, lambda_max <= 0.)
+            penalization += omega*(constraint_max-lambda_max)^2
+            @constraint(solver_model, lambda_min <= 0.)
+            penalization += omega*(constraint_min-lambda_min)^2
+        end
+    end
 
     return penalization
 end
+
+
+
+# Method that checks whether penalized state constraints are hardly satisfied (up to the threshold ε)
 
 function satisfies_state_inequality_constraints(scp_problem::GuSTOProblem, model, X, U, Xp, Up, Delta)
     B_satisfies_constraints = true
     x_dim = model.x_dim
     N = scp_problem.N
     epsilon = model.epsilon
-    
-    # -----------------
-    # STATE CONSTRAINTS
-    # -----------------
-    for k = 1:N
-        for i = 1:x_dim
-            constraint_max = state_max_convex_constraints(model, X, U, [], [], k, i)
-            constraint_min = state_min_convex_constraints(model, X, U, [], [], k, i)
-            if constraint_max > epsilon || constraint_min > epsilon
-                B_satisfies_constraints = false
-            end
-        end
-    end
 
-    # -------------
-    # TRUST REGIONS
-    # -------------
+    # Contribution of trust-region constraints
+
     for k = 1:N
         for i = 1:x_dim
             constraint_max = trust_region_max_constraints(model, X, U, Xp, Up, k, i, Delta)
@@ -252,36 +260,55 @@ function satisfies_state_inequality_constraints(scp_problem::GuSTOProblem, model
         end
     end
 
-    # ---------
-    # OBSTACLES
-    # ---------
+    # Contribution of obstacle-avoidance constraints
+
     for k = 1:N
-        # Spheres
-        for i = 1:length(model.obstacles)
-            constraint = obstacle_constraint(model, X, U, [], [], k, i)
-            if constraint > epsilon
-                B_satisfies_constraints = false
+
+        # Non-polygonal obstacles
+
+        Nb_obstacles = length(model.obstacles)
+        if Nb_obstacles > 0
+            for i = 1:Nb_obstacles
+                constraint = obstacle_constraint(model, X, U, [], [], k, i)
+                if constraint > epsilon
+                    B_satisfies_constraints = false
+                end
             end
         end
 
         # Polygonal obstacles
-        # for i = 1:length(model.poly_obstacles)
-        #     constraint = poly_obstacle_constraint(model, X, U, [], [], k, i)
-        #     if constraint > 0.
-        #         B_satisfies_constraints = false
-        #     end
-        # end
+
+        Nb_poly_obstacles = length(model.poly_obstacles)
+        if Nb_poly_obstacles > 0
+            for i = 1:Nb_poly_obstacles
+                constraint = poly_obstacle_constraint(model, X, U, [], [], k, i)
+                if constraint > epsilon
+                    B_satisfies_constraints = false
+                end
+            end
+        end
+    end
+
+    # Contribution of state constraints that are different from trust-region constraints and obstacle-avoidance constraints
+
+    for k = 1:N
+        for i = 1:x_dim
+            constraint_max = state_max_convex_constraints(model, X, U, [], [], k, i)
+            constraint_min = state_min_convex_constraints(model, X, U, [], [], k, i)
+            if constraint_max > epsilon || constraint_min > epsilon
+                B_satisfies_constraints = false
+            end
+        end
     end
 
     return B_satisfies_constraints
 end
-# ----------------------------------------
 
 
 
-# --------------------------------------------
-# -                CONSTRAINTS               -
-# --------------------------------------------
+# These methods add the remaining constraints, such as linearized dyamical, intial/final conditions constraints and control constraints
+
+
 
 function define_constraints(scp_problem::GuSTOProblem, model)
     add_initial_constraints(scp_problem, model)
@@ -289,6 +316,8 @@ function define_constraints(scp_problem::GuSTOProblem, model)
     add_dynamics_constraints(scp_problem, model)
     add_control_constraints(scp_problem, model)
 end
+
+
 
 function add_initial_constraints(scp_problem::GuSTOProblem, model)
     solver_model = scp_problem.solver_model
@@ -301,17 +330,24 @@ function add_initial_constraints(scp_problem::GuSTOProblem, model)
     scp_problem.initial_constraint = @constraint(solver_model, constraint .== 0.)
 end
 
+
+
+# To improve robustness, final conditions are imposed up to the threshold ε > 0 (originally defined to check satisfaction of state constraints)
+
 function add_final_constraints(scp_problem::GuSTOProblem, model)
     solver_model = scp_problem.solver_model
     x_dim, u_dim = model.x_dim, model.u_dim
     omega, Delta = scp_problem.omega, scp_problem.Delta
+    epsilon = model.epsilon
 
     X, U, Xp, Up = scp_problem.X, scp_problem.U, scp_problem.Xp, scp_problem.Up
 
     constraint = state_final_constraints(model, X, U, Xp, Up)
-    @constraint(solver_model,  constraint - 0.001 .<= 0.)
-    @constraint(solver_model, -constraint - 0.001 .<= 0.)
+    @constraint(solver_model,  constraint - epsilon .<= 0.)
+    @constraint(solver_model, -constraint - epsilon .<= 0.)
 end
+
+
 
 function add_dynamics_constraints(scp_problem::GuSTOProblem, model)
     solver_model = scp_problem.solver_model
@@ -331,36 +367,17 @@ function add_dynamics_constraints(scp_problem::GuSTOProblem, model)
         A_kp     = model.A[k]
         B_kp     = model.B[k]
 
-        # if k < N-2 # Trapezoidal rule
-        #     U_knext  = U[:, k+1]
-        #     X_knextp = Xp[:, k+1]
-        #     U_knextp = Up[:, k+1]
-        #     f_dyn_knext_p = model.f[k+1]
-        #     A_knext_p     = model.A[k+1]
-        #     B_knext_p     = model.B[k+1]
-
-        #     constraint = X_knext - (
-        #                     X_k + dt/2 * (  (   f_dyn_kp + 
-        #                                         A_kp * (X_k-X_kp) + 
-        #                                         B_kp * (U_k-U_kp)   )  
-        #                                     + 
-        #                                     (   f_dyn_knext_p + 
-        #                                         A_knext_p * (X_knext-X_knextp) + 
-        #                                         B_knext_p * (U_knext-U_knextp)   )
-        #                                   )
-        #                             )
-
-        #     @constraint(solver_model, constraint .== 0.)
-        # else # Euler
-            constraint =  X_knext - ( X_k + dt * (  f_dyn_kp + 
-                                                    A_kp * (X_k-X_kp) + 
-                                                    B_kp * (U_k-U_kp)
-                                                 )
-                                    )
-            @constraint(solver_model, constraint .== 0.)
-        # end
+        # Standard forward Euler integration method
+        constraint =  X_knext - ( X_k + dt * (  f_dyn_kp + 
+                                                A_kp * (X_k-X_kp) + 
+                                                B_kp * (U_k-U_kp)
+                                             )
+                                )
+        @constraint(solver_model, constraint .== 0.)
     end
 end
+
+
 
 function add_control_constraints(scp_problem::GuSTOProblem, model)
     solver_model = scp_problem.solver_model
@@ -371,16 +388,21 @@ function add_control_constraints(scp_problem::GuSTOProblem, model)
     N            = length(X[1,:])
 
     for k = 1:N-1
-        for i = 1:dimLinearConstraintsU
-            # Linear constraints
-            constraint = control_linear_constraints(model, X, U, Xp, Up, k, i)
-            @constraint(solver_model, constraint <= 0.)
+
+        # Linear constraints
+        if dimLinearConstraintsU > 0
+            for i = 1:dimLinearConstraintsU
+                constraint = control_linear_constraints(model, X, U, Xp, Up, k, i)
+                @constraint(solver_model, constraint <= 0.)
+            end
         end
-        # for i = 1:dimSecondOrderConeConstraintsU
-        #     # Second order cone constraints
-        #     t, x = control_second_order_cone_constraints(model, X, U, Xp, Up, k, i)
-        #     @constraint(solver_model, [t; x] in SecondOrderCone())
-        # end
+
+        # Second order cone constraints
+        if dimSecondOrderConeConstraintsU > 0
+            for i = 1:dimSecondOrderConeConstraintsU
+                t, x = control_second_order_cone_constraints(model, X, U, Xp, Up, k, i)
+                @constraint(solver_model, [t; x] in SecondOrderCone())
+            end
+        end
     end
 end
-# --------------------------------------------

@@ -141,7 +141,7 @@ end
 
 
 
-# Method that returns the convergence ratio ρ (in percentage) between iterations
+# Method that returns the convergence ratio between iterations (in percentage)
 # The quantities X, U denote the actual solution over time, whereas Xp, Up denote the solution at the previous step over time
 
 function convergence_metric(model::Quadrotor, X, U, Xp, Up)
