@@ -42,11 +42,14 @@ end
 
 # Standard constructor
 
-function GuSTOProblem(model, N, dimLinearConstraintsU, dimSecondOrderConeConstraintsU, Xp, Up, solver=Ipopt.Optimizer)
+function GuSTOProblem(model, N, Xp, Up, solver=Ipopt.Optimizer)
     N     = N
     dt    = model.tf / (N-1)
     omega = model.omega0
     Delta = model.Delta0
+
+    dimLinearConstraintsU          = model.dimLinearConstraintsU
+    dimSecondOrderConeConstraintsU = model.dimSecondOrderConeConstraintsU
 
     solver_model = Model(with_optimizer(Ipopt.Optimizer, print_level=0))
     X = @variable(solver_model, X[1:model.x_dim,1:N  ])

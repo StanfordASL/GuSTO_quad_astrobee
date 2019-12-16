@@ -25,6 +25,8 @@ mutable struct Quadrotor
     θMax
 
     # Problem settings
+    dimLinearConstraintsU
+    dimSecondOrderConeConstraintsU
     x_init
     x_final
     tf
@@ -61,6 +63,8 @@ function Quadrotor()
     gravity = [0;0;9.81]
     θMax = pi/3.0
 
+    dimLinearConstraintsU = 9
+    dimSecondOrderConeConstraintsU = 0
     x_init  = [0;0;0 ; 0;0;0]
     x_final = [2.5;6.;0 ; 0;0;0]
     tf = 2.
@@ -95,7 +99,7 @@ function Quadrotor()
     Quadrotor(x_dim, u_dim,
              [], [], [],
              gravity, θMax,
-             x_init, x_final, tf, xMin, xMax, uMin, uMax,
+             dimLinearConstraintsU, dimSecondOrderConeConstraintsU, x_init, x_final, tf, xMin, xMax, uMin, uMax,
              obstacles,
              poly_obstacles,
              Delta0,

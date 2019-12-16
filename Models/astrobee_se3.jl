@@ -22,7 +22,9 @@ mutable struct AstrobeeSE3
     u_max
     u_min
 
-    # problem  
+    # problem
+    dimLinearConstraintsU
+    dimSecondOrderConeConstraintsU
     x_init
     x_final
     tf
@@ -69,6 +71,8 @@ function AstrobeeSE3()
     u_min = -u_max
 
     # problem 
+    dimLinearConstraintsU = 0
+    dimSecondOrderConeConstraintsU = 0
     x_init  = [-0.25;0.4;0;  0;0;0;  0.;0.;0.; 1.;  0;0;0]
     #x_final = [0.7 ;-0.5;0;  0;0;0;  0.;0.;0.; 1.;  0;0;0]
     x_final = [0.7;-0.5;0;  0;0;0;  1.;0.;0.; 0.;  0;0;0]
@@ -106,7 +110,7 @@ function AstrobeeSE3()
              [], [], [],
              model_radius, mass, J, Jinv,
              x_max, x_min, u_max, u_min,
-             x_init, x_final, tf,
+             dimLinearConstraintsU, dimSecondOrderConeConstraintsU, x_init, x_final, tf,
              obstacles, poly_obstacles,
                 Delta0,
                 omega0,

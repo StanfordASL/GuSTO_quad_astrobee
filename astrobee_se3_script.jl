@@ -137,20 +137,23 @@ end
 
 # ---------------------
 # -     PLOTTING      -
+
+# 2D plots
+
 function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all; x_shooting_all=[])
     N = length(X_all)
-
-    #pyplot(grid=true)
 
     idx = [1,2]
     local fig
     fig = plot(X_all[1][idx[1],:], X_all[1][idx[2],:],
-        label="iter = 1",linewidth=2,
+        label="iter = 0",linewidth=2,
+        xlims=(-0.5,3.),ylims=(-0.5,6.5),
         xlabel="x Position",ylabel="y Position")
+    
     for iter = 2:length(X_all)
         X = X_all[iter]
         plot!(fig, X[idx[1],:], X[idx[2],:],
-            label="iter = $iter",linewidth=2)
+            label="iter = $(iter - 1)",linewidth=2)
     end
 
     for obs_i = 1:length(model.obstacles)
@@ -158,17 +161,12 @@ function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all; x_shooti
         plot_circle(p_obs[idx], obs_radius; color=:red, fig=fig)
     end
 
-    # local fig
-    # for x_shooting in x_shooting_all
-    #     if size(x_shooting,1) > 1
-    #         plot!(fig, x_shooting[idx[1],:], x_shooting[idx[2],:]; c=:red)
-    #     else
-    #         plot!(fig, [0;0], [0;0])
-    #     end
-    # end
-
     return fig
 end
+
+
+
+# 3D plots
 
 function plot3D_solutions(scp_problem::GuSTOProblem, model, X_all, U_all)
     N = length(X_all)
@@ -178,13 +176,14 @@ function plot3D_solutions(scp_problem::GuSTOProblem, model, X_all, U_all)
     idx = [1,2,3]
     local fig
     fig = plot(X_all[1][idx[1],:],X_all[1][idx[2],:],X_all[1][idx[3],:],
-        linewidth=2,label="iter = 1",
+        linewidth=2,label="iter = 0",
         xlims=(-0.1,0.5),ylims=(-0.3,0.3),zlims=(-0.2,0.2),
         xlabel="x Position",ylabel="y Position",zlabel="z Position")
+
     for iter = 2:length(X_all)
         X = X_all[iter]
         plot!(fig,X[idx[1],:],X[idx[2],:],X[idx[3],:],
-            linewidth=2,label="iter = $iter")
+            linewidth=2,label="iter = $(iter - 1)")
     end
 
     for obs_i = 1:length(model.obstacles)
