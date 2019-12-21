@@ -22,7 +22,7 @@ include("./SCP/gusto_problem.jl")
 
 # 2D plots
 
-function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all; x_shooting_all=[])
+function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all)
     N = length(X_all)
 
     idx = [1,2]

@@ -188,7 +188,7 @@ end
 
 
 
-# Method that gathers all the lienar control constraints
+# Method that gathers all the linear control constraints
 
 function control_linear_constraints(model::Quadrotor, X, U, Xp, Up, k, i)
     x_dim, u_dim = model.x_dim, model.u_dim
@@ -273,13 +273,13 @@ end
 # Initial and final conditions on state variables
 
 function state_initial_constraints(model::Quadrotor, X, U, Xp, Up)
-    return (X[:,1] - model.x_init)
+    return ( X[:,1] - model.x_init )
 end
 
 
 
 function state_final_constraints(model::Quadrotor, X, U, Xp, Up)
-    return (X[:,end] - model.x_final)
+    return ( X[:,end] - model.x_final )
 end
 
 
