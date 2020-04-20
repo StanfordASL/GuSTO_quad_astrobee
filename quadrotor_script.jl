@@ -34,8 +34,7 @@ function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all)
     
     for iter = 2:length(X_all)
         X = X_all[iter]
-        plot!(fig, X[idx[1],:], X[idx[2],:],
-            label="iter = $(iter - 1)",linewidth=2)
+        plot!(fig, X[idx[1],:], X[idx[2],:],label="iter = $(iter - 1)",linewidth=2)
     end
 
     for obs_i = 1:length(model.obstacles)

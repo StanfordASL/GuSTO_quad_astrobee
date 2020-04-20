@@ -67,7 +67,7 @@ function Quadrotor()
     dimSecondOrderConeConstraintsU = 0
     x_init  = [0;0;0 ; 0;0;0]
     x_final = [2.5;6.;0 ; 0;0;0]
-    tf = 2.
+    tf = 2.0
     myInf = 1.0e6 # Adopted to detect initial and final condition-free state variables
     xMin = [-0.1;-0.1;-myInf ; -myInf;-myInf;-myInf]
     xMax = [4;7;myInf ; myInf;myInf;myInf]
@@ -77,20 +77,20 @@ function Quadrotor()
     Delta0 = 100.
     omega0 = 1.
     omegamax = 1.0e9
-    epsilon = 1.0e-3
-    rho0 = 10.0
-    rho1 = 20.0
+    epsilon = 0.0
+    rho0 = 5.0
+    rho1 = 10.0
     beta_succ = 2.
     beta_fail = 0.5
     gamma_fail = 5.
-    convergence_threshold = 5.0
+    convergence_threshold = 2.5
 
 
     # Cylindrical obstacles in the form [(x,y),r]
     obstacles = []
-    obs = [[1.0,2.0],1.0/2.5]
+    obs = [[1.0,2.0],0.4]
     push!(obstacles, obs)
-    obs = [[2.0,5.0],1.0/2.5]
+    obs = [[2.0,5.0],0.4]
     push!(obstacles, obs)
 
     # Polygonal obstacles are not used in this example
