@@ -9,6 +9,7 @@ using Ipopt
 using JuMP
 using DifferentialEquations
 using NLsolve
+using Plots
 
 include("./Models/astrobee_se3.jl")
 include("./SCP/gusto_problem.jl")
@@ -21,7 +22,7 @@ include("./SCP/gusto_problem.jl")
 
 # 2D plots
 
-function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all
+function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all)
     N = length(X_all)
 
     idx = [1,2]
