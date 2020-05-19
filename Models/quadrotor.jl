@@ -34,6 +34,7 @@ mutable struct Quadrotor
     xMax
     uMin
     uMax
+    true_cost_weight
 
     # Cylindrical obstacles (modeled by a center (x,y) and a radius r) and polygon obstacles (not used in this example)
     obstacles
@@ -43,13 +44,15 @@ mutable struct Quadrotor
     Delta0
     omega0
     omegamax
+    # threshold for constraints satisfaction : constraints <= epsilon
     epsilon
+    epsilon_xf_constraint
     rho0
     rho1
     beta_succ
     beta_fail
     gamma_fail
-    convergence_threshold
+    convergence_threshold # in %
 end
 
 
@@ -58,33 +61,34 @@ end
 
 function Quadrotor()
     x_dim = 6
-    u_dim = 4
+    u_dim = 4 # u1,u2,u3,Γ
 
     gravity = [0;0;9.81]
     θMax = pi/3.0
 
-    dimLinearConstraintsU = 9
-    dimSecondOrderConeConstraintsU = 0
-    x_init  = [0;0;0 ; 0;0;0]
-    x_final = [2.5;6.;0 ; 0;0;0]
-    tf = 2.0
+    dimLinearConstraintsU = 3
+    dimSecondOrderConeConstraintsU = 1
+    x_init  = [ 0.; 0; 0; 0;0;0]
+    x_final = [2.5;6.; 0; 0;0;0]
+    tf = 2.
     myInf = 1.0e6 # Adopted to detect initial and final condition-free state variables
-    xMin = [-0.1;-0.1;-myInf ; -myInf;-myInf;-myInf]
-    xMax = [4;7;myInf ; myInf;myInf;myInf]
+    xMin = [-0.1;-0.1;-myInf; -myInf;-myInf;-myInf]
+    xMax = [  4.;  7.; myInf;  myInf; myInf; myInf]
     uMin = 0.6
     uMax = 23.2
+    true_cost_weight = 0.0005
 
     Delta0 = 100.
-    omega0 = 1.
-    omegamax = 1.0e9
-    epsilon = 0.0
+    omega0 = 500.
+    omegamax = 1.0e6
+    epsilon = 1e-3
+    epsilon_xf_constraint = 0.
     rho0 = 5.0
     rho1 = 10.0
     beta_succ = 2.
     beta_fail = 0.5
     gamma_fail = 5.
-    convergence_threshold = 2.5
-
+    convergence_threshold = 2.5 # in %
 
     # Cylindrical obstacles in the form [(x,y),r]
     obstacles = []
@@ -99,13 +103,16 @@ function Quadrotor()
     Quadrotor(x_dim, u_dim,
              [], [], [],
              gravity, θMax,
-             dimLinearConstraintsU, dimSecondOrderConeConstraintsU, x_init, x_final, tf, xMin, xMax, uMin, uMax,
+             dimLinearConstraintsU, dimSecondOrderConeConstraintsU, 
+             x_init, x_final, tf, xMin, xMax, uMin, uMax,
+             true_cost_weight,
              obstacles,
              poly_obstacles,
              Delta0,
              omega0,
              omegamax,
              epsilon,
+             epsilon_xf_constraint,
              rho0,
              rho1,
              beta_succ,
@@ -171,14 +178,15 @@ end
 # Method that returns the original cost
 
 function true_cost(model::Quadrotor, X, U, Xp, Up)
-    x_dim, u_dim = model.x_dim, model.u_dim
+    x_dim, u_dim     = model.x_dim, model.u_dim
+    true_cost_weight = model.true_cost_weight
     cost = 0.
 
     for k = 1:length(U[1,:])
         cost += U[u_dim,k]^2 # This corresponds to ∫ Γ(t)^2 dt
     end
 
-    return cost
+    return true_cost_weight * cost
 end
 
 
@@ -196,32 +204,30 @@ function control_linear_constraints(model::Quadrotor, X, U, Xp, Up, k, i)
 
     # Control bounds on Γ
     if i == 1
+      # uMin <= Γ
       return uMin - U[u_dim,k]
     elseif i == 2
-      return U[u_dim,k] - uMax
+      # Γ <= uMax
+      return U[u_dim,k] - uMax 
 
     # Directional control constraint
     elseif i == 3
       return U[u_dim,k]*cos(θMax) - U[u_dim-1,k]
 
-    # Control bounds on u via Γ
-    elseif i == 4
-      return U[1,k] - U[u_dim,k]
-    elseif i == 5
-      return  -U[u_dim,k] - U[1,k]
-    elseif i == 6
-      return U[2,k] - U[u_dim,k]
-    elseif i == 7
-      return  -U[u_dim,k] - U[2,k]
-    elseif i == 8
-      return U[3,k] - U[u_dim,k]
-    elseif i == 9
-      return  -U[u_dim,k] - U[3,k]
     else
-      println("ERROR - TOO MANY LINEAR CONTROL CONSTRAINTS")
+      println("[quadrotor.jl::control_linear_constraints] ERROR - too many constraints.")
     end
 end
 
+function control_second_order_cone_constraints(model::Quadrotor, X, U, Xp, Up, k, i)
+    u_dim = model.u_dim
+
+    if i == 1
+      return (U[u_dim,k], U[:,k])
+    else
+      println("[quadrotor.jl::control_second_order_cone_constraints] ERROR - too many constraints.")
+    end
+end
 
 
 # State bounds and trust-region constraints (these are all convex constraints)
@@ -361,8 +367,6 @@ function f_dyn(x::Vector, u::Vector, model::Quadrotor)
   return f
 end
 
-
-
 function A_dyn(x::Vector, u::Vector, model::Quadrotor)
   x_dim, u_dim = model.x_dim, model.u_dim
   dimR = Int(model.x_dim/2)
@@ -374,8 +378,6 @@ function A_dyn(x::Vector, u::Vector, model::Quadrotor)
 
   return A
 end
-
-
 
 function B_dyn(x::Vector, u::Vector, model::Quadrotor)
   x_dim, u_dim = model.x_dim, model.u_dim

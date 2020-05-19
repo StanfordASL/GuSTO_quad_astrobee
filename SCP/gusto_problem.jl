@@ -1,5 +1,6 @@
 # --------------------------------------------------------------------------
 # -   GuSTO solver environment - Thomas Lew and Riccardo Bonalli 12/2019   -
+# -                                                 updated on   05/2020   -
 # --------------------------------------------------------------------------
 
 
@@ -56,7 +57,8 @@ function GuSTOProblem(model, N, Xp, Up, solver=Ipopt.Optimizer)
     U = @variable(solver_model, U[1:model.u_dim,1:N-1])
 
     GuSTOProblem(N, dt,
-                 omega, Delta, dimLinearConstraintsU, dimSecondOrderConeConstraintsU,
+                 omega, Delta, 
+                 dimLinearConstraintsU, dimSecondOrderConeConstraintsU,
                  solver_model,
                  X, U, Xp, Up,
                  [])
@@ -200,6 +202,7 @@ function add_penalties(scp_problem::GuSTOProblem, model)
 
                 @constraint(solver_model, lambda <= 0.)
                 penalization += omega*(constraint-lambda)^2
+                # penalization += omega*max(0., constraint)
             end
         end
     end
@@ -252,40 +255,39 @@ function satisfies_state_inequality_constraints(scp_problem::GuSTOProblem, model
     epsilon = model.epsilon
 
     # Contribution of trust-region constraints
-
     for k = 1:N
         for i = 1:x_dim
             constraint_max = trust_region_max_constraints(model, X, U, Xp, Up, k, i, Delta)
             constraint_min = trust_region_min_constraints(model, X, U, Xp, Up, k, i, Delta)
             if constraint_max > epsilon || constraint_min > epsilon
+                print("[gusto_problem.jl] - trust_region_constraint violated at i=$i and k=$k\n")
                 B_satisfies_constraints = false
             end
         end
     end
 
     # Contribution of obstacle-avoidance constraints
-
     for k = 1:N
-
         # Non-polygonal obstacles
-
         Nb_obstacles = length(model.obstacles)
         if Nb_obstacles > 0
             for i = 1:Nb_obstacles
                 constraint = obstacle_constraint(model, X, U, [], [], k, i)
+
                 if constraint > epsilon
+                    print("[gusto_problem.jl] - obstacle_constraint violated at i=$i and k=$k, value=$constraint\n")
                     B_satisfies_constraints = false
                 end
             end
         end
 
         # Polygonal obstacles
-
         Nb_poly_obstacles = length(model.poly_obstacles)
         if Nb_poly_obstacles > 0
             for i = 1:Nb_poly_obstacles
                 constraint = poly_obstacle_constraint(model, X, U, [], [], k, i)
                 if constraint > epsilon
+                    print("[gusto_problem.jl] - poly_obstacles_constraint violated at i=$i and k=$k\n")
                     B_satisfies_constraints = false
                 end
             end
@@ -293,12 +295,12 @@ function satisfies_state_inequality_constraints(scp_problem::GuSTOProblem, model
     end
 
     # Contribution of state constraints that are different from trust-region constraints and obstacle-avoidance constraints
-
     for k = 1:N
         for i = 1:x_dim
             constraint_max = state_max_convex_constraints(model, X, U, [], [], k, i)
             constraint_min = state_min_convex_constraints(model, X, U, [], [], k, i)
             if constraint_max > epsilon || constraint_min > epsilon
+                print("[gusto_problem.jl] - state_max_convex_constraints violated at i=$i and k=$k\n")
                 B_satisfies_constraints = false
             end
         end
@@ -335,14 +337,13 @@ end
 
 
 
-# To improve robustness, final conditions are imposed up to the threshold ε > 0 (originally defined to check satisfaction of state constraints)
-
+# To improve robustness, final conditions are imposed up to a threshold ε > 0 
+#   (not always necessary, but can be depending on dynamics and discretization scheme to enable reachability to xf)
 function add_final_constraints(scp_problem::GuSTOProblem, model)
     solver_model = scp_problem.solver_model
     x_dim, u_dim = model.x_dim, model.u_dim
     omega, Delta = scp_problem.omega, scp_problem.Delta
-    epsilon = model.epsilon
-
+    epsilon      = model.epsilon_xf_constraint
     X, U, Xp, Up = scp_problem.X, scp_problem.U, scp_problem.Xp, scp_problem.Up
 
     constraint = state_final_constraints(model, X, U, Xp, Up)
@@ -370,7 +371,7 @@ function add_dynamics_constraints(scp_problem::GuSTOProblem, model)
         A_kp     = model.A[k]
         B_kp     = model.B[k]
 
-        # Standard forward Euler integration method
+        # Simple forward Euler integration method
         constraint =  X_knext - ( X_k + dt * (  f_dyn_kp + 
                                                 A_kp * (X_k-X_kp) + 
                                                 B_kp * (U_k-U_kp)
@@ -391,7 +392,6 @@ function add_control_constraints(scp_problem::GuSTOProblem, model)
     N            = length(X[1,:])
 
     for k = 1:N-1
-
         # Linear constraints
         if dimLinearConstraintsU > 0
             for i = 1:dimLinearConstraintsU
@@ -403,8 +403,9 @@ function add_control_constraints(scp_problem::GuSTOProblem, model)
         # Second order cone constraints
         if dimSecondOrderConeConstraintsU > 0
             for i = 1:dimSecondOrderConeConstraintsU
-                t, x = control_second_order_cone_constraints(model, X, U, Xp, Up, k, i)
-                @constraint(solver_model, [t; x] in SecondOrderCone())
+                Γk, uk = control_second_order_cone_constraints(model, X, U, Xp, Up, k, i)
+                # @constraint(solver_model, [Γk; uk] in SecondOrderCone()) # not supported by Ipopt
+                @constraint(solver_model, uk[1]^2+uk[2]^2+uk[3]^2 <= Γk^2) # works with Ipopt
             end
         end
     end
