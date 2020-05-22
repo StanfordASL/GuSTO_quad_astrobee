@@ -41,7 +41,9 @@ mutable struct AstrobeeSE3
     Delta0
     omega0
     omegamax
+    # threshold for constraints satisfaction : constraints <= epsilon
     epsilon
+    epsilon_xf_constraint
     rho0
     rho1
     beta_succ
@@ -77,6 +79,7 @@ function AstrobeeSE3()
     omega0 = 1.
     omegamax = 1.0e9
     epsilon = 1.0e-3
+    epsilon_xf_constraint = 0.
     rho0 = 10.
     rho1 = 20.
     beta_succ = 2.
@@ -100,14 +103,10 @@ function AstrobeeSE3()
                model_radius, mass, J, Jinv,
                dimLinearConstraintsU, dimSecondOrderConeConstraintsU, x_init, x_final, tf, xMax, xMin,
                obstacles, poly_obstacles,
-               Delta0,
-               omega0,
-               omegamax,
-               epsilon,
-               rho0,
-               rho1,
-               beta_succ,
-               beta_fail,
+               Delta0, omega0, omegamax,
+               epsilon, epsilon_xf_constraint,
+               rho0, rho1,
+               beta_succ, beta_fail,
                gamma_fail,
                convergence_threshold)
 end
