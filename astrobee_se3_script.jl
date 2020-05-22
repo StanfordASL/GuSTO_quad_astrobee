@@ -10,6 +10,8 @@ using JuMP
 using DifferentialEquations
 using NLsolve
 using Plots
+# using PyPlot
+import PyPlot; const plt = PyPlot
 
 include("./Models/astrobee_se3.jl")
 include("./SCP/gusto_problem.jl")
@@ -141,3 +143,6 @@ function plot_sphere(position_3d, radius; color=:blue, fig=-1, lab="")
         return fig
     end
 end
+
+
+
