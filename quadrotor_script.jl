@@ -22,7 +22,7 @@ include("./SCP/gusto_problem.jl")
 # --------------------
 # Plotting with PyPlot
 # --------------------
-function plt_circle(ax, pos, radius; color="k", alpha=1., border_alpha=1., label="None")
+function plt_circle(ax, pos, radius; color="k", alpha=1., label="None")
     # Filled circle
     circle = plt.matplotlib.patches.Circle(pos, radius=radius,
                     color=color, fill=true, alpha=alpha)
