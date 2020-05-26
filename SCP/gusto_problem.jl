@@ -198,7 +198,8 @@ function add_penalties(scp_problem::GuSTOProblem, model)
         for k = 1:N
             for i = 1:Nb_obstacles
                 lambda     = lambdas_obstacles[i,k]
-                constraint = obstacle_constraint_convexified(model, X, U, Xp, Up, k, i)
+                constraint = obstacle_constraint_convexified(model, X, U, Xp, Up, k, i,
+                                                                    "sphere")
 
                 @constraint(solver_model, lambda <= 0.)
                 penalization += omega*(constraint-lambda)^2
@@ -215,7 +216,9 @@ function add_penalties(scp_problem::GuSTOProblem, model)
         for k = 1:N
             for i = 1:Nb_poly_obstacles
                 lambda     = lambdas_poly_obstacles[i,k]
-                constraint = poly_obstacle_constraint_convexified(model, X, U, Xp, Up, k, i)
+                # constraint = poly_obstacle_constraint_convexified(model, X, U, Xp, Up, k, i)
+                constraint = obstacle_constraint_convexified(model, X, U, Xp, Up, k, i,
+                                                                    "poly")
 
                 @constraint(solver_model, lambda <= 0.)
                 penalization += omega*(constraint-lambda)^2
@@ -272,8 +275,8 @@ function satisfies_state_inequality_constraints(scp_problem::GuSTOProblem, model
         Nb_obstacles = length(model.obstacles)
         if Nb_obstacles > 0
             for i = 1:Nb_obstacles
-                constraint = obstacle_constraint(model, X, U, [], [], k, i)
-
+                constraint = obstacle_constraint(model, X, U, [], [], k, i,
+                                                        "sphere")
                 if constraint > epsilon
                     print("[gusto_problem.jl] - obstacle_constraint violated at i=$i and k=$k, value=$constraint\n")
                     B_satisfies_constraints = false
@@ -285,7 +288,9 @@ function satisfies_state_inequality_constraints(scp_problem::GuSTOProblem, model
         Nb_poly_obstacles = length(model.poly_obstacles)
         if Nb_poly_obstacles > 0
             for i = 1:Nb_poly_obstacles
-                constraint = poly_obstacle_constraint(model, X, U, [], [], k, i)
+                # constraint = poly_obstacle_constraint(model, X, U, [], [], k, i)
+                constraint = obstacle_constraint(model, X, U, Xp, Up, k, i,
+                                                        "poly")
                 if constraint > epsilon
                     print("[gusto_problem.jl] - poly_obstacles_constraint violated at i=$i and k=$k\n")
                     B_satisfies_constraints = false

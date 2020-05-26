@@ -2,7 +2,8 @@
 # -   Model for the freeflyer example - Thomas Lew and Riccardo Bonalli 12/2019   -
 # ---------------------------------------------------------------------------------
 
-
+include("./polygonal_obstacles.jl")
+include("./ISS.jl")
 
 # Model freeflyer as a Julia class
 
@@ -64,22 +65,25 @@ function AstrobeeSE3()
     # problem 
     dimLinearConstraintsU = 0
     dimSecondOrderConeConstraintsU = 0
-    q_init = [0.;0.;0.;1.]
-    q_temp = [1.;0.;0.;0.]
-    q_final = q_temp/norm(q_temp)
-    x_init  = [-0.25;0.4;0 ; 0;0;0 ; q_init ; 0;0;0]
-    x_final = [0.7;-0.5;0 ; 0;0;0 ; q_final ; 0;0;0]
-    tf = 110.
+    # q_init = [0.;0.;0.;1.]
+    # q_temp = [1.;0.;0.;0.]
+    # q_final = q_temp/norm(q_temp)
+    # x_init  = [-0.25;0.4;0 ; 0;0;0 ; q_init ; 0;0;0]
+    # x_final = [0.7;-0.5;0 ; 0;0;0 ; q_final ; 0;0;0]
+    s13     = sqrt(1. / 3.)
+    x_init  = [ 7.2,-0.4,5.0,  3.5e-2,3.5e-2,1e-4,  s13,0.,s13,s13,     0,0,0]
+    x_final = [11.3,6.0,4.5,  1e-4,1e-4,1e-4,  -0.5,0.5,-0.5,0.5,  0,0,0]
+    tf = 100.
     myInf = 1.0e6 # Adopted to detect initial and final condition-free state variables
-    xMax = [100.;100.;100. ; 0.4;0.4;0.4 ; 100.;100.;100.;100. ; 45*3.14/180;45*3.14/180;45*3.14/180]
+    xMax = [100.;100.;100. ; 0.4;0.4;0.4 ; 100.;100.;100.;100. ; 1.;1.;1]
     xMin = -xMax
 
     # GuSTO Parameters
     Delta0 = 100.
-    omega0 = 1.
+    omega0 = 100.
     omegamax = 1.0e9
     epsilon = 1.0e-3
-    epsilon_xf_constraint = 0.
+    epsilon_xf_constraint = 1e-4
     rho0 = 10.
     rho1 = 20.
     beta_succ = 2.
@@ -90,13 +94,38 @@ function AstrobeeSE3()
 
     # Cylindrical obstacles in the form [(x,y),r]
     obstacles = []
-    obs = [[0.0,0.175,0.], 0.1]
-    push!(obstacles, obs)
-    obs = [[0.4,-0.25,0.], 0.1]
-    push!(obstacles, obs)
-    
+    # obs = [[0.0,0.175,0.], 0.1]
+    # push!(obstacles, obs)
+    # obs = [[0.4,-0.25,0.], 0.1]
+    # push!(obstacles, obs)
+
     # Polygonal obstacles are not used in this example
-    poly_obstacles = []
+    # poly_obstacles = []
+
+    print("Initializing the ISS.")
+    keepin_zones, keepout_zones = get_ISS_zones()
+    poly_obstacles = keepout_zones
+    # additional obstacles
+    # polygonal_obstacles
+    # center, width = Array([9.,0.2, 0.]), 0.2
+    # append!(keepin_zones, [PolygonalObstacle(center,width)] ) 
+
+    # spherical
+    obs = [[11.3,3.8,4.8], 0.3]
+    push!(obstacles, obs)
+    # obs = [[10.5,5.5,5.5], 0.4]
+    # push!(obstacles, obs)
+
+    obs = [[8.5,-0.04,5.01], 0.3]
+    push!(obstacles, obs)
+    obs = [[11.2,1.84,5.01], 0.3]
+    push!(obstacles, obs)
+
+    # Polygonal
+    # center, width = np.array([10.8,0.,5.]), 0.85*np.ones(3)
+    # poly_obstacles.append(PolyObs(center,width))
+    # center, width = np.array([11.2,1.75,4.85]), np.array([0.5,0.6,0.65])
+    # poly_obstacles.append(PolyObs(center,width))
 
     AstrobeeSE3(x_dim, u_dim,
                [], [], [],
@@ -242,30 +271,53 @@ end
 # Methods that return the cylindrical obstacle-avoidance constraint and its lienarized version
 # Here, a merely classical distance function is considered
 
-function obstacle_constraint(model::AstrobeeSE3, X, U, Xp, Up, k, obs_i)
-    p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
-    bot_radius        = model.model_radius
-    total_radius      = obs_radius+ bot_radius
-    p_k  = X[1:3, k]
-    
-    dist = norm(p_k - p_obs, 2)
-    constraint = -( dist - total_radius )
+function obstacle_constraint(model::AstrobeeSE3, X, U, Xp, Up, k, obs_i,
+                                                 obs_type::String="sphere")
+    #  obs_type    : Type of obstacles, can be 'sphere' or 'poly'
+    if obs_type=="sphere"
+      p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
+      bot_radius        = model.model_radius
+      total_radius      = obs_radius + bot_radius
+      p_k  = X[1:3, k]
+      
+      dist = norm(p_k - p_obs, 2)
+      constraint = -( dist - total_radius )
+    elseif obs_type=="poly"
+      obs            = model.poly_obstacles[obs_i]
+      p_k            = X[1:3, k]
+      dist_prev, pos = signed_distance_with_closest_point_on_surface(p_k, obs)
+      constraint = -( dist_prev - model.model_radius )
+    else
+      print("[astrobee_se3.jl::obstacle_constraint_convexified] Unknown obstacle type.")
+    end
 
     return constraint
 end
 
 
 
-function obstacle_constraint_convexified(model::AstrobeeSE3, X, U, Xp, Up, k, obs_i)
-    p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
-    bot_radius        = model.model_radius
-    total_radius      = obs_radius + bot_radius
-    p_k  = X[1:3, k]
-    p_kp = Xp[1:3, k]
-    
-    dist_prev = norm(p_kp - p_obs, 2)
-    n_prev    = (p_kp-p_obs) / dist_prev
-    constraint = -( dist_prev - total_radius + sum(n_prev[i] * (p_k[i]-p_kp[i]) for i=1:3) )
+function obstacle_constraint_convexified(model::AstrobeeSE3, X, U, Xp, Up, k, obs_i,
+                                                 obs_type::String="sphere")
+    #  obs_type    : Type of obstacles, can be 'sphere' or 'poly'
+    if obs_type=="sphere"
+      p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
+      bot_radius        = model.model_radius
+      total_radius      = obs_radius + bot_radius
+      p_k, p_kp         = X[1:3, k], Xp[1:3, k]
+      
+      dist_prev = norm(p_kp - p_obs, 2)
+      n_prev    = (p_kp-p_obs) / dist_prev
+      constraint = -( dist_prev - total_radius + sum(n_prev[i] * (p_k[i]-p_kp[i]) for i=1:3) )
+    elseif obs_type=="poly"
+      obs            = model.poly_obstacles[obs_i]
+      p_k, p_kp      = X[1:3, k], Xp[1:3, k]
+      dist_prev, pos = signed_distance_with_closest_point_on_surface(p_kp, obs)
+
+      n_prev = (p_kp-obs.c[1:3]) / norm((p_kp-obs.c[1:3]),2)
+      constraint = -( dist_prev - model.model_radius + sum(n_prev[i] * (p_k[i]-p_kp[i]) for i=1:3) )
+    else
+      print("[astrobee_se3.jl::obstacle_constraint_convexified] Unknown obstacle type.")
+    end
     
     return constraint
 end

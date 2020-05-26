@@ -294,31 +294,44 @@ end
 # Methods that return the cylindrical obstacle-avoidance constraint and its lienarized version
 # Here, a merely classical distance function is considered
 
-function obstacle_constraint(model::Quadrotor, X, U, Xp, Up, k, obs_i)
-    dimR  = Int(model.x_dim/2)
-    p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
-    p_k  = X[1:dimR-1,k]
-    
-    dist = norm(p_k - p_obs, 2)
-    constraint = -( dist - obs_radius )
-
+function obstacle_constraint(model::Quadrotor, X, U, Xp, Up, k, obs_i,
+                                               obs_type::String="sphere")
+    #  obs_type    : Type of obstacles, can be 'sphere' or 'poly'
+    if obs_type=="sphere"
+      dimR  = Int(model.x_dim/2)
+      p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
+      p_k  = X[1:dimR-1,k]
+      
+      dist = norm(p_k - p_obs, 2)
+      constraint = -( dist - obs_radius )
+    else
+      print("[quadrotor.jl::obstacle_constraint_convexified] Unknown obstacle type\n
+             Check astrobee_se3.jl for polygonal obstacles.")
+    end
     return constraint
 end
 
 
 
-function obstacle_constraint_convexified(model::Quadrotor, X, U, Xp, Up, k, obs_i)
-    dimR  = Int(model.x_dim/2)
-    p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
-    p_k  = X[1:dimR-1,k]
-    p_kp = Xp[1:dimR-1,k]
+function obstacle_constraint_convexified(model::Quadrotor, X, U, Xp, Up, k, obs_i,
+                                                           obs_type::String="sphere")
+    #  obs_type    : Type of obstacles, can be 'sphere' or 'poly'
+    if obs_type=="sphere"
+      dimR  = Int(model.x_dim/2)
+      p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
+      p_k  = X[1:dimR-1,k]
+      p_kp = Xp[1:dimR-1,k]
 
-    dist_prev = norm(p_kp - p_obs, 2)
-    dir_prev = (p_kp - p_obs)/dist_prev
-    constraint = -( dist_prev - obs_radius + sum(dir_prev[i] * (p_k[i] - p_kp[i]) for i=1:dimR-1) )
-
+      dist_prev = norm(p_kp - p_obs, 2)
+      dir_prev = (p_kp - p_obs)/dist_prev
+      constraint = -( dist_prev - obs_radius + sum(dir_prev[i] * (p_k[i] - p_kp[i]) for i=1:dimR-1) )
+    else
+      print("[quadrotor.jl::obstacle_constraint_convexified] Unknown obstacle type\n
+             Check astrobee_se3.jl for polygonal obstacles.")
+    end
     return constraint
 end
+
 
 
 
