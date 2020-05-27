@@ -1,7 +1,7 @@
 # GuSTO algorithm for quadrotor and Astrobee
 
 ## Description
-Simplified implementation of GuSTO in Julia. Includes simulation examples of a quadrotor and Astrobee robot navigating navigating on-board the International Space Station.
+Simplified implementation of GuSTO in Julia. Includes simulation examples of a quadrotor and Astrobee robot navigating on-board the International Space Station.
 
 
 <p align="left">
@@ -11,7 +11,7 @@ Simplified implementation of GuSTO in Julia. Includes simulation examples of a q
 </p>
 
 
-Tested with Julia 1.4.
+Tested with Julia 1.4.1
 
 ## Online notebook
 
