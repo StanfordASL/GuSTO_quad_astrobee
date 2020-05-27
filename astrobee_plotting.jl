@@ -3,12 +3,6 @@
 # -----------------------------------------------------------------------------------------------
 
 
-
-using LinearAlgebra
-using Ipopt
-using JuMP
-using DifferentialEquations
-using NLsolve
 using Plots
 
 # Python plotting with matplotlib
@@ -16,16 +10,13 @@ using PyCall, LaTeXStrings
 # using PyPlot
 import PyPlot; const plt = PyPlot
 
-include("./Models/astrobee_se3.jl")
+include("./Models/astrobee.jl")
 include("./SCP/gusto_problem.jl")
 
 include("Models/polygonal_obstacles.jl")
 include("Models/ISS.jl")
 
 # Plotting Functions
-
-
-
 # 2D plots
 
 function plot_solutions(scp_problem::GuSTOProblem, model, X_all, U_all)
@@ -267,11 +258,7 @@ function plt_rectangle(ax, center, widths, additional_w=0;
     arguments:  - center    - (2,) center
                 - widths    - (2,) total widths  from and to edges of rectangle
     """
-    # if center.shape[0] != 2 or widths.shape[0] != 2:
-    #     assert False, 'plt_rectangle function can only plot in 2d.'
     facecolor = color
-    # if noFaceColor:
-    #     facecolor = None
 
     deltas = [widths[1]+additional_w, widths[2]+additional_w]
     bottom_left = (center[1] - deltas[1]/2., center[2] - deltas[2]/2.)
@@ -280,15 +267,6 @@ function plt_rectangle(ax, center, widths, additional_w=0;
                                              # color="g")
                                 linewidth=1, edgecolor=color,facecolor=facecolor,alpha=alpha)
     ax.add_patch(rect)
-    # if label=="None"
-    #     r_edge = plt.matplotlib.patches.Rectangle((bottom_left[0],bottom_left[1]),
-    #                                          deltas[0],deltas[1], 
-    #                     color=color, alpha=1, fill=false)
-    # else
-    #     r_edge = plt.matplotlib.patches.Circle(pos, radius=radius, 
-    #                     color=color, alpha=1, fill=false, label=label)
-    # end
-    # ax.add_patch(r_edge)
     return ax
 end
 
@@ -313,10 +291,6 @@ end
 function plt_ISS()
     lims_btm, lims_up = Vector([8.8,-2., 3.5]), Vector([12.2, 8., 6.5])
 
-#     rcParams['font.family'] = 'serif'
-#     rcParams['font.size'] = 14
-#     rc('text', usetex=True)
-
     obstacles, poly_obs = [], []
     keepin_zones, keepout_zones = get_ISS_zones()
 
@@ -327,21 +301,13 @@ function plt_ISS()
     fig, ax = plt.subplots(figsize=(6, 10))
 
     ax = plt_obstacles(ax, obstacles, keepin_zones, poly_obs, idx)
-    # ax.text(10.45, -0.2, 
-    #         L"$\mathcal{X}_{obs}$", fontsize=24)
-    # ax.text(9.2, 1.8, 
-    #         L"$\mathcal{X}_{obs}$", fontsize=24)
 
     # Plot start & goal positions
     ax.tick_params("both", labelsize=24) 
     ax.set_xlabel("X", fontsize=24)
     ax.set_ylabel("Y", rotation="horizontal",fontsize=24)
-    # plt.xlim([lims_btm[idx[1]], lims_up[idx[1]]])
-    # plt.ylim([lims_btm[idx[2]], lims_up[idx[2]]])  
     plt.xlim([5.,15.])
     plt.ylim([-8.,10.])  
-    # plt.xlim([2.,17.])
-    # plt.ylim([-6.,12.])  
     # *********************************************
 
     plt.draw()
