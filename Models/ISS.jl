@@ -23,9 +23,9 @@ function get_ISS_zones()
 	btms_lft[3],  tops_rgt[3]  = Vector([ 5.9, 1.2, 3.7]), Vector([10.2, 2.7, 6.0])  # 3
 	btms_lft[4],  tops_rgt[4]  = Vector([ 8.0, 2.7, 3.8]), Vector([ 9.6, 7.3, 5.9])  # 4
 	btms_lft[5],  tops_rgt[5]  = Vector([ 9.6, 7.3, 3.8]), Vector([11.9, 9.0, 5.9])  # 5
-	btms_lft[6],  tops_rgt[6]  = Vector([11.9, 2.7, 3.8]), Vector([13.0, 7.3, 5.9])  # 6
-	btms_lft[7],  tops_rgt[7]  = Vector([11.6, 1.2, 3.8]), Vector([12.0, 2.7, 5.9])  # 7
-	btms_lft[8],  tops_rgt[8]  = Vector([11.6, 0.8, 3.7]), Vector([12.0, 1.2, 6.0])  # 8
+	btms_lft[6],  tops_rgt[6]  = Vector([11.9, 2.7, 3.8]), Vector([20.0, 7.3, 5.9])  # 6
+	btms_lft[7],  tops_rgt[7]  = Vector([11.6, 1.2, 3.8]), Vector([20.0, 2.7, 5.9])  # 7
+	btms_lft[8],  tops_rgt[8]  = Vector([11.6, 0.8, 3.7]), Vector([20.0, 1.2, 6.0])  # 8
 	btms_lft[9],  tops_rgt[9]  = Vector([12.0,-0.8, 3.7]), Vector([13.0, 0.8, 6.0])  # 9
 	btms_lft[10], tops_rgt[10] = Vector([11.6,-1.2, 3.7]), Vector([12.0,-0.8, 6.0])  # 10
 	btms_lft[11], tops_rgt[11] = Vector([11.6,-2.7, 4.3]), Vector([12.0,-1.2, 5.4])  # 11

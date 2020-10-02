@@ -69,41 +69,39 @@ function Astrobee()
     dimLinearConstraintsU = 0
     dimSecondOrderConeConstraintsU = 2
     s13     = sqrt(1. / 3.)
-    x_init  = [ 7.2,-0.4,5.0,  3.5e-2,3.5e-2,1e-4,  s13,0.,s13,s13,     0,0,0]
-    x_final = [11.3,6.0,4.5,  1e-4,1e-4,1e-4,  -0.5,0.5,-0.5,0.5,  0,0,0]
+    x_init  = [ 7.2,-0.4,5.0,  0.035,0.035,0.,  0.,s13,s13,s13,     0,0,0]
+    x_final = [11.3,6.0,4.5,  0,0,0,            0.5,-0.5,0.5,-0.5,  0,0,0]
     tf = 100.
     myInf = 1.0e6 # Adopted to detect initial and final condition-free state variables
-    xMax = [100.;100.;100. ; 0.4;0.4;0.4 ; 100.;100.;100.;100. ; 1.;1.;1]
+    xMax = [100.;100.;100. ; 0.4;0.4;0.4 ; 1.1;1.1;1.1;1.1 ; 1.;1.;1]
     xMin = -xMax
 
     # constraints / limits
-    hard_limit_accel = 0.01          # m/s^2
-    hard_limit_alpha = 1. *3.14/180. # rad/s^2
-    uMax = Array([mass*hard_limit_accel,mass*hard_limit_accel,mass*hard_limit_accel,  J_norm*hard_limit_alpha,J_norm*hard_limit_alpha,J_norm*hard_limit_alpha])
+    uMax = Array([0.072,0.072,0.072,  2e-3,2e-3,2e-3])
     uMin = -uMax
 
 
     # GuSTO Parameters
-    Delta0 = 100.
-    omega0 = 100.
+    Delta0 = 5.
+    omega0 = 1000.
     omegamax = 1.0e9
     epsilon = 1.0e-3
     epsilon_xf_constraint = 1e-4
-    rho0 = 10.
-    rho1 = 20.
+    rho0 = 5.0
+    rho1 = 20.0
     beta_succ = 2.
     beta_fail = 0.5
     gamma_fail = 5.
-    convergence_threshold = 2.5
+    convergence_threshold = 1e-2
 
 
     # Spherical obstacles in the form [(x,y),r]
     obstacles = []
-    obs = [[11.3,3.8,4.8], 0.3]
+    obs = [[11.3,3.8,4.8], 0.33]
     push!(obstacles, obs)
-    obs = [[8.5,-0.04,5.01], 0.3]
+    obs = [[8.5,-0.15,5.0], 0.33]
     push!(obstacles, obs)
-    obs = [[11.2,1.84,5.01], 0.3]
+    obs = [[11.2,1.84,5.0], 0.33]
     push!(obstacles, obs)
 
     # Polygonal obstacles
@@ -144,30 +142,37 @@ function initialize_trajectory(model::Astrobee, N::Int)
   X = hcat(range(x_init, stop=x_final, length=N)...)
   U = zeros(u_dim, N-1)
 
+  # update the position to be an "elbow"
+  N1 = Integer(floor(N/2))
+  N2 = N - N1
+  r1 = zeros(2,N1)
+  r2 = zeros(2,N2)
+  rm = [10.5; 1.]                  # middle point in the correct homotopy class 
+  # rm = [ x_final[1]; x_init[2] ] # L-shaped initialization
+  for k = 1:2
+    r1[k,:] = LinRange(x_init[k],rm[k],N1)
+    r2[k,:] = LinRange(rm[k],x_final[k],N2)
+  end
+  X[1,:] = hcat(r1[1,:],r2[1,:])
+  X[2,:] = hcat(r1[2,:],r2[2,:])
+
   return X, U
 end
 
 
 
-# Method that returns the convergence ratio between iterations (in percentage)
+# Method that returns the convergence ratio between iterations
 # The quantities X, U denote the actual solution over time, whereas Xp, Up denote the solution at the previous step over time
-
 function convergence_metric(model::Astrobee, X, U, Xp, Up)
-	x_dim = 3
+    x_dim = model.x_dim
     N = length(X[1,:])
-
-    # Normalized maximum relative error between iterations
-    max_num, max_den = -Inf, -Inf
+    err = 0.0
     for k in 1:N
-        val = norm(X[1:x_dim,k] - Xp[1:x_dim,k])
-        max_num = val > max_num ? val : max_num
-
-        val = norm(X[1:x_dim,k])
-        max_den = val > max_den ? val : max_den
+      val = norm( X[1:x_dim,k] - Xp[1:x_dim,k] ,Inf)
+      err = maximum([err;val])
     end
 
-    # Returning percentage error
-    return max_num*100.0/max_den
+    return err
 end
 
 
@@ -175,14 +180,14 @@ end
 # Method that returns the original cost
 
 function true_cost(model::Astrobee, X, U, Xp, Up)
-	x_dim, u_dim = model.x_dim, model.u_dim
-    cost = 0.
+  x_dim, u_dim = model.x_dim, model.u_dim
+  cost = 0.
 
-    for k = 1:length(U[1,:])
-        cost += sum(U[i,k]^2 for i = 1:u_dim) # This corresponds to ∫ ( || F(t) ||^2 + || T(t) ||^2 ) dt
-    end
+  for k = 1:length(U[1,:])
+      cost += sum(U[i,k]*U[i,k] for i=1:u_dim) # This corresponds to ∫ ( || F(t) ||^2 + || T(t) ||^2 ) dt
+  end
 
-    return cost
+  return cost
 end
 
 
@@ -385,10 +390,10 @@ function f_dyn(x::Vector, u::Vector, model::Astrobee)
   f[1:3] = v
   f[4:6] = F/model.mass
 
-  f[7]  = 1/2*(-ωx*qx - ωy*qy - ωz*qz)
-  f[8]  = 1/2*( ωx*qw - ωz*qy + ωy*qz)
-  f[9]  = 1/2*( ωy*qw + ωz*qx - ωx*qz)
-  f[10] = 1/2*( ωz*qw - ωy*qx + ωx*qy)
+  f[7]  = 0.5*(-ωx*qx - ωy*qy - ωz*qz)
+  f[8]  = 0.5*( ωx*qw - ωz*qy + ωy*qz)
+  f[9]  = 0.5*( ωy*qw + ωz*qx - ωx*qz)
+  f[10] = 0.5*( ωz*qw - ωy*qx + ωx*qy)
   f[11:13] = model.Jinv*(M - cross(ω,model.J*ω))
 
   return f

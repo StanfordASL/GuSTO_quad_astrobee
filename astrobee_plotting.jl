@@ -6,8 +6,7 @@
 using Plots
 
 # Python plotting with matplotlib
-using PyCall, LaTeXStrings
-# using PyPlot
+using PyCall, LaTeXStrings, Colors
 import PyPlot; const plt = PyPlot
 
 include("./Models/astrobee.jl")
@@ -15,6 +14,73 @@ include("./SCP/gusto_problem.jl")
 
 include("Models/polygonal_obstacles.jl")
 include("Models/ISS.jl")
+
+
+# -------------------------------------------------------
+# Plotting misc - Taylor Patrick Reynolds - UW - Sep 2020
+# ---
+gsp = pyimport("matplotlib.gridspec")
+slice(i,j) = pycall(pybuiltin("slice"), PyObject, i,j)
+struct CSMPlotCol
+    red
+    blue
+    darkblue
+    green
+    gray
+    purple
+    gold
+    darkgold
+    magenta
+    cyan
+end
+function CSMPlotCol()
+    red = [234;61;37]/255
+    blue = [0;32;91]/255
+    darkblue = [4;28;44]/255
+    green = [10;134;61]/255
+    gray = [153;153;154]/255
+    purple = [51;0;111]/255
+    gold = [232;211;162]/255
+    darkgold = [145;123;76]/255
+    magenta = [1;0;1]
+    cyan = [0;1;1]
+    return CSMPlotCol(red,blue,darkblue,green,gray,purple,gold,darkgold,magenta,cyan)
+end
+
+struct CSMPlotFmt
+    col::CSMPlotCol
+    circle::Array{Float64,2}
+    markersize::Integer
+    gridalpha::Float64
+    figsize::Tuple{Int64,Int64}
+    dblwide::Tuple{Int64,Int64}
+    lw::Integer
+    labelsize::Integer
+    fontsize::Integer
+    titlesize::Integer
+end
+function CSMPlotFmt()
+    col     = CSMPlotCol()
+    angles  = LinRange(0,2*pi,100)
+    circle  = zeros(2,100)
+    for k = 1:100
+        circle[:,k] = [cos(angles[k]);sin(angles[k])]
+    end
+    markersize  = 5
+    gridalpha   = 0.3
+    figsize     = (8,6)
+    dblwide     = (12,6)
+    linewidth   = 2
+    labelsize   = 12
+    fontsize    = 14
+    titlesize   = 16
+    return CSMPlotFmt(col,circle,markersize,gridalpha,
+                        figsize,dblwide,linewidth,
+                        labelsize,fontsize,titlesize)
+end
+# ---
+# Plotting misc - Taylor Patrick Reynolds - UW - Sep 2020
+# -------------------------------------------------------
 
 # Plotting Functions
 # 2D plots
@@ -84,11 +150,13 @@ function plot3D_final_solution(scp_problem::GuSTOProblem, model, X, U)
         # xtickfont=smallfont, ytickfont=smallfont, ztickfont=smallfont, leg=false)
 
     idx = [1,2,3]
-    camera = (40, 40)
+    # camera = (40, 40)
+    camera = (40, 20)
 
     xlims = (9.75,12.25)
     ylims = (1.,  4.5)
-    zlims = (4.2, 5.1)
+    # zlims = (4.2, 5.1)
+    zlims = (4.2, 5.3)
 
     X = copy(X)
     idx_in =            X[idx[1],:].<= xlims[2]
@@ -277,7 +345,7 @@ function plt_obstacles(ax, obstacles, keepin_zones, poly_obs, idx=[1,2])
     end
     for obs in keepin_zones
         center, widths = obs.c, 2. * Vector([obs.dx,obs.dy,obs.dz])
-        ax = plt_rectangle(ax, center[idx], widths[idx], color="g")
+        ax = plt_rectangle(ax, center[idx], widths[idx], color="g", alpha=0.15)
     end
     for obs in poly_obs
         center, widths = obs.c, 2. * Vector([obs.dx,obs.dy,obs.dz])
@@ -317,20 +385,33 @@ end
 
 function plt_solutions(scp_problem::GuSTOProblem, model, X_all, U_all;
                         xlims=[-0.5,3.], ylims=[0.0,6.], figsize=(8,6), B_plot_labels=true)
+    # Colors of each iteration
+    fmt = CSMPlotFmt()
+    colors = zeros(3,length(X_all))
+    for i = 1:3
+        colors[i,:] = LinRange(fmt.col.cyan[i],fmt.col.magenta[i],length(X_all))
+    end
+
     N = length(X_all)
     idx = [1,2]
 
-
-    fig = plt.figure(figsize=figsize)
+    # fig = plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=(10,8))
     ax  = plt.gca()
 
-    # Plot SCP solutions
-    plt.plot(X_all[1][idx[1],:], X_all[1][idx[2],:],
-                    label="Initializer", linewidth=2)
-    for iter = 2:length(X_all)
+    # # Plot SCP solutions
+    # plt.plot(X_all[1][idx[1],:], X_all[1][idx[2],:],
+    #                 label="Initializer", linewidth=2)
+    # for iter = 2:length(X_all)
+    #     X = X_all[iter]
+    #     ax.plot(X[idx[1],:], X[idx[2],:],
+    #                 label="Iterate $(iter - 1)", linewidth=2)
+    # end
+    for iter = 1:length(X_all)
         X = X_all[iter]
         ax.plot(X[idx[1],:], X[idx[2],:],
-                    label="Iterate $(iter - 1)", linewidth=2)
+                    label="Iteration $(iter)", linewidth=2,
+                    marker="o",color=colors[:,iter],linestyle="-")
     end
 
     ## ---------------------- ##
@@ -339,7 +420,7 @@ function plt_solutions(scp_problem::GuSTOProblem, model, X_all, U_all;
     ## ----- obstacles ------ ##
     for obs_i = 1:length(model.obstacles)
         p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
-        plt_circle(ax, p_obs[idx], obs_radius; color="r", alpha=0.4)
+        plt_circle(ax, p_obs[idx], obs_radius; color="r", alpha=0.2)
     end
     plt.plot(Inf*[1,1],Inf*[1,1], "r-") # for legend
 
@@ -355,13 +436,15 @@ function plt_solutions(scp_problem::GuSTOProblem, model, X_all, U_all;
     rcParams = PyDict(plt.matplotlib["rcParams"])
     rcParams["font.size"] = 22
     rcParams["font.family"] = "Helvetica"
-    # plt.xlim(xlims)
-    # plt.ylim(ylims)
+    plt.xlim([5.,13])
+    plt.ylim([-3,8.])
     if B_plot_labels
-        plt.title("Astrobee SCP Trajectories")
+        plt.title("All Free-Flyer Trajectories")
         ax.title.set_position([.5, 1.01])
-        plt.xlabel("X", fontsize=26)
-        plt.ylabel("Y", fontsize=26, rotation="horizontal")    
+        # plt.xlabel("X", fontsize=26)
+        # plt.ylabel("Y", fontsize=26, rotation="horizontal")    
+        ax.set_xlabel(L"x_{\mathcal{I}}\ [m]",fontsize=26)
+        ax.set_ylabel(L"y_{\mathcal{I}}\ [m]",fontsize=26)
         plt.legend(loc="upper left", labelspacing=0.1)
     end
     plt.grid(alpha=0.3)
@@ -422,27 +505,31 @@ end
 
 
 function plt_final_solution_ISS(scp_problem::GuSTOProblem, model, X, U,
-                                                                  idx=[1,2])
+                                idx=[1,2])
+    # color
+    fmt = CSMPlotFmt()
+
     N = length(X_all)
     # idx = [1,2]
-    fig, ax = plt.subplots(figsize=(6, 10))
+    # fig, ax = plt.subplots(figsize=(6, 10))
+    fig, ax = plt.subplots(figsize=(8, 8))
 
     ax  = plt.gca()
 
     # Plot final solution
     plt.plot(X[idx[1],:], X[idx[2],:], "bo-", 
-                linewidth=2, markersize=6)
-    plt.plot(Inf*[1,1],Inf*[1,1], "b-", label="Trajectory") # for legend
+                linewidth=2, markersize=6, color=fmt.col.blue)
+    plt.plot(Inf*[1,1],Inf*[1,1], "b-", label="Trajectory", color=fmt.col.blue) # for legend
 
     # Plot Thrust
     for k = 1:(length(X[1,:])-1)
         xk, uk =  X[:,k], U[:,k]
 
-        uMax, mag = 23.2, 0.7*1000.5
+        uMax, mag = 23.2, 0.3*1000.5
 
         plt.arrow(xk[idx[1]], xk[idx[2]], 
                     mag*(uk[idx[1]]/uMax), mag*(uk[idx[2]]/uMax),
-                    color="g")
+                    color="g", linewidth=2.)
     end
     plt.plot(Inf*[1,1],Inf*[1,1], "g-", label="Thrust") # for legend
 
@@ -452,12 +539,12 @@ function plt_final_solution_ISS(scp_problem::GuSTOProblem, model, X, U,
     ## ----- obstacles ------ ##
     for obs_i = 1:length(model.obstacles)
         p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
-        plt_circle(ax, p_obs[idx], obs_radius; color="r", alpha=0.4)
+        plt_circle(ax, p_obs[idx], obs_radius; color=fmt.col.red, alpha=0.4)
     end
     plt.plot(Inf*[1,1],Inf*[1,1], "r-", label="Obstacle") # for legend
 
     ## -------- ISS ---------- ##
-    lims_btm, lims_up = Vector([5.5,-1.5, 3.5]), Vector([12.2, 7.5, 6.5])
+    lims_btm, lims_up = Vector([5.5,-2.5, 3.5]), Vector([12.2, 8.0, 6.5])
     obstacles, poly_obs = [], []#model.poly_obstacles
     keepin_zones, keepout_zones = get_ISS_zones()
     ax = plt_obstacles(ax, obstacles, keepin_zones, poly_obs, idx)
@@ -473,15 +560,12 @@ function plt_final_solution_ISS(scp_problem::GuSTOProblem, model, X, U,
     plt.title("Final Trajectory", fontsize=38)
     ax.title.set_position([.5, 1.01])
 
-    plt.xlabel("X", fontsize=28)
-    plt.ylabel("Y", fontsize=28, rotation="horizontal")    
-    # plt.xlim([2.,17.])
-    # plt.ylim([-6.,12.])  
+    plt.xlabel(L"x_{\mathcal{I}}\ [m]", fontsize=28)
+    plt.ylabel(L"y_{\mathcal{I}}\ [m]", fontsize=28)    
+    # plt.ylabel(L"y_{\mathcal{I}}\ [m]", fontsize=28, rotation="horizontal")    
     plt.xlim([lims_btm[idx[1]],lims_up[idx[1]]])
     plt.ylim([lims_btm[idx[2]],lims_up[idx[2]]])
     # plt.zlim([lims_btm[3],lims_up[3]])
-    # plt.legend(loc="center left")
-    # ax.legend(markerscale=1)
     plt.legend(loc="center left", bbox_to_anchor=(0.,0.7), handletextpad=0.1)
     plt.grid(alpha=0.3)
     

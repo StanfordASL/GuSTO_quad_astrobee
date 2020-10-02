@@ -73,8 +73,8 @@ function reset_problem(scp_problem::GuSTOProblem, model, solver=Ipopt.Optimizer)
     N = scp_problem.N
     X = @variable(scp_problem.solver_model, X[1:model.x_dim,1:N  ])
     U = @variable(scp_problem.solver_model, U[1:model.u_dim,1:N-1])
-    scp_problem.X       = X
-    scp_problem.U       = U
+    scp_problem.X = X
+    scp_problem.U = U
 end
 
 
@@ -353,7 +353,8 @@ function add_final_constraints(scp_problem::GuSTOProblem, model)
 
     constraint = state_final_constraints(model, X, U, Xp, Up)
     @constraint(solver_model,  constraint - epsilon .<= 0.)
-    @constraint(solver_model, -constraint - epsilon .<= 0.)
+    @constraint(solver_model,  -constraint - epsilon .<= 0.)
+    # @constraint(solver_model, constraint .== 0.)
 end
 
 
@@ -366,22 +367,27 @@ function add_dynamics_constraints(scp_problem::GuSTOProblem, model)
     X, U, Xp, Up = scp_problem.X, scp_problem.U, scp_problem.Xp, scp_problem.Up
     N, dt        = length(X[1,:]), scp_problem.dt
 
+    # Trapezoidal discretization scheme
     for k = 1:N-1
-        X_knext  = X[:, k+1]
-        X_k      = X[:, k]
-        U_k      = U[:, k]
-        X_kp     = Xp[:, k]
-        U_kp     = Up[:, k]
-        f_dyn_kp = model.f[k]
-        A_kp     = model.A[k]
-        B_kp     = model.B[k]
+        X_kn,  X_k  = X[:,k+1],  X[:,k]
+        X_kp        = Xp[:,k]
+        U_k,   U_kp = U[:,k],    Up[:,k]
+        f_dyn_kp, A_kp, B_kp = model.f[k], model.A[k], model.B[k]
 
-        # Simple forward Euler integration method
-        constraint =  X_knext - ( X_k + dt * (  f_dyn_kp + 
-                                                A_kp * (X_k-X_kp) + 
-                                                B_kp * (U_k-U_kp)
-                                             )
-                                )
+        if k<N-1
+            X_knp        = Xp[:,k+1]
+            U_kn,  U_knp = U[:,k+1], Up[:,k+1]
+            f_dyn_knp    = model.f[k+1]
+            A_knp        = model.A[k+1]
+            B_knp        = model.B[k+1]
+            constraint   = (X_kn-X_k) - 0.5*dt * (
+                                 (f_dyn_kp  + A_kp *(X_k-X_kp)   + B_kp *(U_k-U_kp) ) + 
+                                 (f_dyn_knp + A_knp*(X_kn-X_knp) + B_knp*(U_kn-U_knp))
+                                                 )
+        else
+            # forward Euler integration method
+            constraint =  (X_kn-X_k) - dt * (f_dyn_kp + A_kp *(X_k-X_kp) + B_kp *(U_k-U_kp) ) 
+        end
         @constraint(solver_model, constraint .== 0.)
     end
 end

@@ -71,7 +71,7 @@ function Quadrotor()
     dimSecondOrderConeConstraintsU = 1
     x_init  = [ 0.; 0; 0; 0;0;0]
     x_final = [2.5;6.; 0; 0;0;0]
-    tf = 2.
+    tf = 2.5
     myInf = 1.0e6 # Adopted to detect initial and final condition-free state variables
     xMin = [-0.1;-0.1;-myInf; -myInf;-myInf;-myInf]
     xMax = [  4.;  7.; myInf;  myInf; myInf; myInf]
@@ -79,17 +79,17 @@ function Quadrotor()
     uMax = 23.2
     true_cost_weight = 0.0005
 
-    Delta0 = 100.
-    omega0 = 500.
-    omegamax = 1.0e6
+    Delta0 = 5.
+    omega0 = 1000.
+    omegamax = 1.0e9
     epsilon = 1e-3
     epsilon_xf_constraint = 0.
     rho0 = 5.0
-    rho1 = 10.0
+    rho1 = 20.0
     beta_succ = 2.
     beta_fail = 0.5
     gamma_fail = 5.
-    convergence_threshold = 2.5 # in %
+    convergence_threshold = 1e-3 # in %
 
     # Cylindrical obstacles in the form [(x,y),r]
     obstacles = []
@@ -161,17 +161,22 @@ function convergence_metric(model::Quadrotor, X, U, Xp, Up)
     N = length(X[1,:])
 
     # Normalized maximum relative error between iterations
-    max_num, max_den = -Inf, -Inf
-    for k in 1:N
-        val = norm(X[1:x_dim,k] - Xp[1:x_dim,k])
-        max_num = val > max_num ? val : max_num
+    # max_num, max_den = -Inf, -Inf
+    # for k in 1:N
+    #     val = norm(X[1:x_dim,k] - Xp[1:x_dim,k])
+    #     max_num = val > max_num ? val : max_num
 
-        val = norm(X[1:x_dim,k])
-        max_den = val > max_den ? val : max_den
+    #     val = norm(X[1:x_dim,k])
+    #     max_den = val > max_den ? val : max_den
+    # end
+
+    err = 0.0
+    for k in 1:N
+        val = norm(X[1:x_dim,k] - Xp[1:x_dim,k],Inf)
+        err = maximum([err;val])
     end
 
-    # Returning percentage error
-    return max_num*100.0/max_den
+    return err
 end
 
 
@@ -187,7 +192,7 @@ function true_cost(model::Quadrotor, X, U, Xp, Up)
         cost += U[u_dim,k]^2 # This corresponds to ∫ Γ(t)^2 dt
     end
 
-    return true_cost_weight * cost
+    return true_cost_weight * cost * model.tf
 end
 
 
