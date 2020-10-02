@@ -1,3 +1,7 @@
+# -------------------------------------------------------
+# Plotting - Taylor Patrick Reynolds - UW - Sep 2020
+# ---
+
 using PyCall, LaTeXStrings, Colors
 import PyPlot
 const plt = PyPlot
