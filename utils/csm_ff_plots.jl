@@ -213,7 +213,7 @@ function csm_plot_freeflyer_trj(ax,m,N,X_all,U_all,fmt::CSMPlotFmt)
     ## ----- obstacles ------ ##
     for obs_i = 1:length(m.obstacles)
         p_obs, obs_radius = m.obstacles[obs_i][1], m.obstacles[obs_i][2]
-        plt_circle(ax, p_obs[idx], obs_radius; color=fmt.col.red, alpha=0.4)
+        plt_circle(ax, p_obs[idx], obs_radius; color=fmt.col.red, alpha=0.1)
     end
     ax.plot(Inf*[1,1],Inf*[1,1], "r-", label="Obstacle") # for legend
     ## -------- ISS ---------- ##

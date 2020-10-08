@@ -59,7 +59,7 @@ function Astrobee()
     x_dim = 13
     u_dim = 6
 
-    model_radius = sqrt.(3)*0.5*0.05 # Each side of cubic robot is 5.0cm & inflate to sphere
+    model_radius = 0.0 #0.05 * (sqrt.(3)/2.0) # Each side of cubic robot is 5.0cm & inflate to sphere
     mass = 7.2
     J_norm = 0.1083
     J = J_norm*Matrix(1.0I,3,3)
@@ -83,7 +83,7 @@ function Astrobee()
 
     # GuSTO Parameters
     Delta0 = 5.
-    omega0 = 1000.
+    omega0 = 100.
     omegamax = 1.0e9
     epsilon = 1.0e-3
     epsilon_xf_constraint = 1e-4
@@ -92,16 +92,16 @@ function Astrobee()
     beta_succ = 2.
     beta_fail = 0.5
     gamma_fail = 5.
-    convergence_threshold = 1e-2
+    convergence_threshold = 5e-2
 
 
     # Spherical obstacles in the form [(x,y),r]
     obstacles = []
-    obs = [[11.3,3.8,4.8], 0.33]
+    obs = [[11.3,3.8,4.8], 0.3] #sqrt(3)*0.025] #0.33]
     push!(obstacles, obs)
-    obs = [[8.5,-0.15,5.0], 0.33]
+    obs = [[8.5,-0.15,5.0], 0.3] #sqrt(3)*0.025] #0.33]
     push!(obstacles, obs)
-    obs = [[11.2,1.84,5.0], 0.33]
+    obs = [[11.2,1.84,5.0], 0.3] #sqrt(3)*0.025] #0.33]
     push!(obstacles, obs)
 
     # Polygonal obstacles

@@ -93,9 +93,9 @@ function Quadrotor()
 
     # Cylindrical obstacles in the form [(x,y),r]
     obstacles = []
-    obs = [[1.0,2.0],0.4]
+    obs = [[1.0,2.0],0.5]
     push!(obstacles, obs)
-    obs = [[2.0,5.0],0.4]
+    obs = [[2.0,5.0],0.5]
     push!(obstacles, obs)
 
     # Polygonal obstacles are not used in this example

@@ -310,10 +310,10 @@ function plt_circle(ax, pos, radius;
     # Edge of circle, with alpha 1.
     if label=="None"
         c_edge = plt.matplotlib.patches.Circle(pos, radius=radius, 
-                        color=color, alpha=1, fill=false)
+                        color=color, alpha=0.8, fill=false)
     else
         c_edge = plt.matplotlib.patches.Circle(pos, radius=radius, 
-                        color=color, alpha=1, fill=false, label=label)
+                        color=color, alpha=0.8, fill=false, label=label)
     end
     ax.add_patch(c_edge)
     return ax
@@ -341,7 +341,7 @@ end
 function plt_obstacles(ax, obstacles, keepin_zones, poly_obs, idx=[1,2])
     for obs in obstacles
         pos, radius = Vector([obs[1][idx[1]],obs[1][idx[2]]]), obs[2]
-        ax = plt_circle(ax, pos, radius, color="r", alpha=0.4)
+        ax = plt_circle(ax, pos, radius, color="r", alpha=0.1)
     end
     for obs in keepin_zones
         center, widths = obs.c, 2. * Vector([obs.dx,obs.dy,obs.dz])
@@ -420,7 +420,7 @@ function plt_solutions(scp_problem::GuSTOProblem, model, X_all, U_all;
     ## ----- obstacles ------ ##
     for obs_i = 1:length(model.obstacles)
         p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
-        plt_circle(ax, p_obs[idx], obs_radius; color="r", alpha=0.2)
+        plt_circle(ax, p_obs[idx], obs_radius; color="r", alpha=0.1)
     end
     plt.plot(Inf*[1,1],Inf*[1,1], "r-") # for legend
 
@@ -481,7 +481,7 @@ function plt_final_solution(scp_problem::GuSTOProblem, model, X, U)
     # Plot obstacles
     for obs_i = 1:length(model.obstacles)
         p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
-        plt_circle(ax, p_obs[idx], obs_radius; color="r", alpha=0.4)
+        plt_circle(ax, p_obs[idx], obs_radius; color="r", alpha=0.1)
     end
     plt.plot(Inf*[1,1],Inf*[1,1], "r-", label="Obstacle") # for legend
 
@@ -539,7 +539,7 @@ function plt_final_solution_ISS(scp_problem::GuSTOProblem, model, X, U,
     ## ----- obstacles ------ ##
     for obs_i = 1:length(model.obstacles)
         p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
-        plt_circle(ax, p_obs[idx], obs_radius; color=fmt.col.red, alpha=0.4)
+        plt_circle(ax, p_obs[idx], obs_radius; color=fmt.col.red, alpha=0.1)
     end
     plt.plot(Inf*[1,1],Inf*[1,1], "r-", label="Obstacle") # for legend
 

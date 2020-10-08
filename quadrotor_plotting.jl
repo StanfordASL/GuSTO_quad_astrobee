@@ -116,15 +116,6 @@ function plt_solutions(scp_problem::GuSTOProblem, model, X_all, U_all;
     ax  = plt.gca()
 
     # Plot SCP solutions
-    # plt.plot(X_all[1][idx[1],:], X_all[1][idx[2],:],
-    #                 label="Initializer", linewidth=2,
-    #                 marker="o",color=colors[:,1],linestyle="-")
-    # for iter = 2:length(X_all)
-    #     X = X_all[iter]
-    #     ax.plot(X[idx[1],:], X[idx[2],:],
-    #                 label="Iteration $(iter - 1)", linewidth=2,
-    #                 marker="o",color=colors[:,iter],linestyle="-")
-    # end
     for iter = 1:length(X_all)
         X = X_all[iter]
         ax.plot(X[idx[1],:], X[idx[2],:],
@@ -135,7 +126,7 @@ function plt_solutions(scp_problem::GuSTOProblem, model, X_all, U_all;
     # Plot obstacles
     for obs_i = 1:length(model.obstacles)
         p_obs, obs_radius = model.obstacles[obs_i][1], model.obstacles[obs_i][2]
-        plt_circle(ax, p_obs[idx], obs_radius; color="r", alpha=0.3)
+        plt_circle(ax, p_obs[idx], obs_radius; color=fmt.col.red, alpha=0.1)
     end
 
     # Settings / Style / Parameters
@@ -146,11 +137,11 @@ function plt_solutions(scp_problem::GuSTOProblem, model, X_all, U_all;
     plt.xlim(xlims)
     plt.ylim(ylims)
     if B_plot_labels
-        plt.title("Open-Loop Quadcopter Trajectories", pad=10)
-        plt.xlabel("E [m]")
-        plt.ylabel("N [m]")    
-        plt.legend(loc="top left", fontsize=18, 
-                                      labelspacing=0.1)
+        plt.title("All Quadcopter Trajectories", pad=6, fontsize=fmt.titlesize+4)
+        plt.xlabel("E [m]", fontsize=fmt.titlesize+4)
+        plt.ylabel("N [m]", fontsize=fmt.titlesize+4)    
+        plt.legend(loc="top left", fontsize=fmt.labelsize+6, 
+                                   labelspacing=0.1)
     end
     plt.grid(alpha=0.3)
 
@@ -171,7 +162,7 @@ function plt_final_solution(scp_problem::GuSTOProblem, model, X, U)
 
     # Plot final solution
     plt.plot(X[idx[1],:], X[idx[2],:], "bo-", 
-                linewidth=2, markersize=6, color=fmt.col.blue)
+                linewidth=3, markersize=7, color=fmt.col.blue)
     plt.plot(Inf*[1,1],Inf*[1,1], "b-", label="Trajectory", color=fmt.col.blue) # for legend
 
 
@@ -236,7 +227,7 @@ function plt_final_angle_accel(scp_problem::GuSTOProblem, model, X, U)
     # Tilt Angle
     plt.subplot(2,1,1)
     plt.plot(times, tilt_angles, "bo-", 
-                linewidth=1, markersize=4, color=fmt.col.blue)
+                linewidth=2, markersize=6, color=fmt.col.blue)
     # max tilt angle
     theta_max = (180/pi) * (pi/3.0)
     plt.plot([0,t_max], theta_max*ones(2), 
@@ -258,7 +249,7 @@ function plt_final_angle_accel(scp_problem::GuSTOProblem, model, X, U)
     fig.tight_layout(pad=2.0)
 
     plt.plot(times, norms_U, "bo-", 
-                linewidth=1, markersize=4, color=fmt.col.blue)
+                linewidth=2, markersize=6, color=fmt.col.blue)
 
     # max/min acceleration
     a_min, a_max = 0.6, 23.2
