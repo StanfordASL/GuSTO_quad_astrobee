@@ -59,7 +59,7 @@ function Astrobee()
     x_dim = 13
     u_dim = 6
 
-    model_radius = 0.0 #0.05 * (sqrt.(3)/2.0) # Each side of cubic robot is 5.0cm & inflate to sphere
+    model_radius = sqrt(3) * 0.025 # Each side of cubic robot is 5.0cm & inflate to sphere
     mass = 7.2
     J_norm = 0.1083
     J = J_norm*Matrix(1.0I,3,3)
@@ -86,22 +86,22 @@ function Astrobee()
     omega0 = 100.
     omegamax = 1.0e9
     epsilon = 1.0e-3
-    epsilon_xf_constraint = 1e-4
+    epsilon_xf_constraint = 1e-3
     rho0 = 5.0
     rho1 = 20.0
     beta_succ = 2.
     beta_fail = 0.5
     gamma_fail = 5.
-    convergence_threshold = 5e-2
+    convergence_threshold = 3e-2
 
 
     # Spherical obstacles in the form [(x,y),r]
     obstacles = []
-    obs = [[11.3,3.8,4.8], 0.3] #sqrt(3)*0.025] #0.33]
+    obs = [[11.3,3.8,4.8], 0.3]
     push!(obstacles, obs)
-    obs = [[8.5,-0.15,5.0], 0.3] #sqrt(3)*0.025] #0.33]
+    obs = [[8.5,-0.15,5.0], 0.3]
     push!(obstacles, obs)
-    obs = [[11.2,1.84,5.0], 0.3] #sqrt(3)*0.025] #0.33]
+    obs = [[11.2,1.84,5.0], 0.3]
     push!(obstacles, obs)
 
     # Polygonal obstacles
@@ -153,8 +153,8 @@ function initialize_trajectory(model::Astrobee, N::Int)
     r1[k,:] = LinRange(x_init[k],rm[k],N1)
     r2[k,:] = LinRange(rm[k],x_final[k],N2)
   end
-  X[1,:] = hcat(r1[1,:],r2[1,:])
-  X[2,:] = hcat(r1[2,:],r2[2,:])
+  X[1,:] = vcat(r1[1,:],r2[1,:])
+  X[2,:] = vcat(r1[2,:],r2[2,:])
 
   return X, U
 end

@@ -139,7 +139,7 @@ function plot3D_solutions(scp_problem::GuSTOProblem, model, X_all, U_all)
     return fig
 end
 
-function plot3D_final_solution(scp_problem::GuSTOProblem, model, X, U)
+function plot3D_final_solution(scp_problem::GuSTOProblem, model, X, U; B_save_png=false)
     N = length(X_all)
 
     font = Plots.font("Helvetica", 16)
@@ -180,7 +180,8 @@ function plot3D_final_solution(scp_problem::GuSTOProblem, model, X, U)
         xticks=xticks,yticks=yticks,zticks=zticks,
         # xlabel="X", ylabel="Y", zlabel="Z",
         camera = camera,
-        fontfamily="Helvetica",margin=5Plots.mm,left_margin = 8Plots.mm)
+        fontfamily="Helvetica",margin=5Plots.mm,left_margin = 8Plots.mm,
+        dpi=300)
 
 
     # Spherical obstacles
@@ -205,24 +206,22 @@ function plot3D_final_solution(scp_problem::GuSTOProblem, model, X, U)
         end
         plot!(fig,x,y,z,linetype=:surface,colorbar=false,
             seriestype = [:shape,],
-            c  = color,alpha = 0.2)
+            c  = color,alpha = 0.2, dpi=300)
     end
 
     # Trajectory
     fig = plot!(X[idx[1],:],X[idx[2],:],zlims[1]*ones(length(X[idx[3],:])),
-        linewidth=2,color=:gray,alpha=0.7)
+        linewidth=2,color=:gray,alpha=0.7, dpi=300)
     fig = scatter!(X[idx[1],:],X[idx[2],:],zlims[1]*ones(length(X[idx[3],:])),
         linewidth=4,color=:gray,markerstrokecolor=:darkgray,
-        markersize=6, alpha=0.7)
+        markersize=6, alpha=0.7, dpi=300)
     fig = scatter!(X[idx[1],:],X[idx[2],:],X[idx[3],:],
         linewidth=4,color=:blue,markerstrokecolor=:darkblue,
-        markersize=6, alpha=1.)
+        markersize=6, alpha=1., dpi=300)
 
-    # for iter = 2:length(X_all)
-    #     X = X_all[iter]
-    #     plot!(fig,X[idx[1],:],X[idx[2],:],X[idx[3],:],
-    #         linewidth=2,label="iter = $(iter - 1)")
-    # end
+    if B_save_png
+        Plots.savefig("figs/astrobee/astro_close3d.png")#,bbox_inches="tight",dpi=300)
+    end
 
     return fig
 end
@@ -345,7 +344,9 @@ function plt_obstacles(ax, obstacles, keepin_zones, poly_obs, idx=[1,2])
     end
     for obs in keepin_zones
         center, widths = obs.c, 2. * Vector([obs.dx,obs.dy,obs.dz])
-        ax = plt_rectangle(ax, center[idx], widths[idx], color="g", alpha=0.15)
+        green = [10;134;61]/255
+        ax = plt_rectangle(ax, center[idx], widths[idx], color=green, alpha=0.15)
+        
     end
     for obs in poly_obs
         center, widths = obs.c, 2. * Vector([obs.dx,obs.dy,obs.dz])

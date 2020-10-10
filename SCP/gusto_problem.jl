@@ -216,7 +216,6 @@ function add_penalties(scp_problem::GuSTOProblem, model)
         for k = 1:N
             for i = 1:Nb_poly_obstacles
                 lambda     = lambdas_poly_obstacles[i,k]
-                # constraint = poly_obstacle_constraint_convexified(model, X, U, Xp, Up, k, i)
                 constraint = obstacle_constraint_convexified(model, X, U, Xp, Up, k, i,
                                                                     "poly")
 
@@ -288,7 +287,6 @@ function satisfies_state_inequality_constraints(scp_problem::GuSTOProblem, model
         Nb_poly_obstacles = length(model.poly_obstacles)
         if Nb_poly_obstacles > 0
             for i = 1:Nb_poly_obstacles
-                # constraint = poly_obstacle_constraint(model, X, U, [], [], k, i)
                 constraint = obstacle_constraint(model, X, U, Xp, Up, k, i,
                                                         "poly")
                 if constraint > epsilon
